@@ -76,7 +76,10 @@ npm test
 
 ### **WORK IN PROGRESS**
 
+### 0.0.1 (2026-08-07)
+
 - (typhosj) Adapter scaffold: TypeScript runtime, React admin UI, CI and release tooling.
+  Not published; the first public version is 0.1.0.
 
 ## License
 

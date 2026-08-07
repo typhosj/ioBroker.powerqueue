@@ -10,6 +10,7 @@
   "homepage": "https://github.com/typhosj/ioBroker.powerqueue",
   "license": "MIT",
   "keywords": [
+    "ioBroker",
     "energy",
     "power",
     "surplus",
@@ -41,6 +42,7 @@
     "@mui/icons-material": "^6.5.0",
     "@mui/material": "^6.5.0",
     "@tsconfig/node22": "^22.0.5",
+    "esbuild": "^0.28.1",
     "@types/iobroker": "npm:@iobroker/types@^7.2.2",
     "@types/node": "^22.20.1",
     "@types/react": "^18.3.31",
@@ -76,7 +78,8 @@
     "check": "tsc --noEmit && tsc --noEmit -p src-admin/tsconfig.json",
     "lint": "eslint -c eslint.config.mjs .",
     "translate": "translate-adapter",
-    "release": "release-script"
+    "release": "release-script",
+    "pr:repocheck": "node -e \"for (const p of ['build', 'admin/assets', 'admin/index.html']) require('fs').rmSync(p, { recursive: true, force: true })\" && npx @iobroker/repochecker https://github.com/typhosj/ioBroker.powerqueue --local"
   },
   "bugs": {
     "url": "https://github.com/typhosj/ioBroker.powerqueue/issues"
