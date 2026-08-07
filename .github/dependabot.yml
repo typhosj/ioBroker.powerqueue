@@ -30,3 +30,22 @@ updates:
       - dependency-name: '@types/node'
         update-types:
           - 'version-update:semver-major'
+      # React and MUI majors are dictated by @iobroker/adapter-react-v5, which declares
+      # react/react-dom 18.3.1 and @mui/* 6.5.0 as peer dependencies. They move when
+      # adapter-react-v5 moves, not on their own.
+      - dependency-name: 'react'
+        update-types: ['version-update:semver-major']
+      - dependency-name: 'react-dom'
+        update-types: ['version-update:semver-major']
+      - dependency-name: '@types/react'
+        update-types: ['version-update:semver-major']
+      - dependency-name: '@types/react-dom'
+        update-types: ['version-update:semver-major']
+      - dependency-name: '@mui/material'
+        update-types: ['version-update:semver-major']
+      - dependency-name: '@mui/icons-material'
+        update-types: ['version-update:semver-major']
+      # typescript-eslint (via @iobroker/eslint-config) declares a peer range that ends
+      # below TypeScript 7, and TypeScript 7 no longer exposes the API it loads.
+      - dependency-name: 'typescript'
+        update-types: ['version-update:semver-major']
