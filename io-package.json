@@ -59,6 +59,7 @@
         "mode": "daemon",
         "type": "energy",
         "compact": true,
+        "nogit": true,
         "connectionType": "local",
         "dataSource": "push",
         "adminUI": {
