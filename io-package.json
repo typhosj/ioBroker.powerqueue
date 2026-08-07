@@ -1,0 +1,108 @@
+{
+    "common": {
+        "name": "powerqueue",
+        "version": "0.0.1",
+        "news": {
+            "0.0.1": {
+                "en": "initial release",
+                "de": "Erstveröffentlichung",
+                "ru": "Начальная версия",
+                "pt": "lançamento inicial",
+                "nl": "Eerste uitgave",
+                "fr": "Première version",
+                "it": "Versione iniziale",
+                "es": "Versión inicial",
+                "pl": "Pierwsze wydanie",
+                "uk": "Початкова версія",
+                "zh-cn": "首次出版"
+            }
+        },
+        "titleLang": {
+            "en": "PowerQueue",
+            "de": "PowerQueue",
+            "ru": "PowerQueue",
+            "pt": "PowerQueue",
+            "nl": "PowerQueue",
+            "fr": "PowerQueue",
+            "it": "PowerQueue",
+            "es": "Cola de energía",
+            "pl": "Kolejka mocy",
+            "uk": "PowerQueue",
+            "zh-cn": "电源队列"
+        },
+        "desc": {
+            "en": "Distributes an available electrical power budget among prioritized, flexible consumers",
+            "de": "Verteilt ein verfügbares Strombudget auf priorisierte, flexible Verbraucher",
+            "ru": "Распределяет доступный бюджет электроэнергии между приоритетными и гибкими потребителями.",
+            "pt": "Distribui um orçamento de energia elétrica disponível entre consumidores flexíveis e priorizados",
+            "nl": "Verdeelt een beschikbaar elektriciteitsbudget onder geprioriteerde, flexibele consumenten",
+            "fr": "Distribue un budget d’énergie électrique disponible entre des consommateurs flexibles et prioritaires",
+            "it": "Distribuisce il budget di energia elettrica disponibile tra consumatori flessibili e prioritari",
+            "es": "Distribuye un presupuesto de energía eléctrica disponible entre consumidores flexibles y priorizados.",
+            "pl": "Rozdziela dostępny budżet energii elektrycznej wśród priorytetowych, elastycznych odbiorców",
+            "uk": "Розподіляє доступний бюджет електроенергії між пріоритетними гнучкими споживачами",
+            "zh-cn": "在优先、灵活的消费者之间分配可用电力预算"
+        },
+        "authors": ["typhosj <typhosj@gmx.de>"],
+        "keywords": ["energy", "power", "surplus", "pv", "load-management", "priority"],
+        "licenseInformation": {
+            "type": "free",
+            "license": "MIT"
+        },
+        "platform": "Javascript/Node.js",
+        "icon": "powerqueue.png",
+        "enabled": true,
+        "extIcon": "https://raw.githubusercontent.com/typhosj/ioBroker.powerqueue/main/admin/powerqueue.png",
+        "readme": "https://github.com/typhosj/ioBroker.powerqueue/blob/main/README.md",
+        "loglevel": "info",
+        "tier": 3,
+        "mode": "daemon",
+        "type": "energy",
+        "compact": true,
+        "connectionType": "local",
+        "dataSource": "push",
+        "adminUI": {
+            "config": "html"
+        },
+        "eraseOnUpload": true,
+        "dependencies": [
+            {
+                "js-controller": ">=6.0.11"
+            }
+        ],
+        "globalDependencies": [
+            {
+                "admin": ">=7.0.23"
+            }
+        ]
+    },
+    "native": {
+        "mode": "observe",
+        "gridPowerId": "",
+        "reserveWatts": 200
+    },
+    "objects": [],
+    "instanceObjects": [
+        {
+            "_id": "info",
+            "type": "channel",
+            "common": {
+                "name": "Information"
+            },
+            "native": {}
+        },
+        {
+            "_id": "info.connection",
+            "type": "state",
+            "common": {
+                "role": "indicator.connected",
+                "name": "Device or service connected",
+                "type": "boolean",
+                "read": true,
+                "write": false,
+                "def": false
+            },
+            "native": {}
+        }
+    ]
+}

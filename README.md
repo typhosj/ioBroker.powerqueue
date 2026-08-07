@@ -60,6 +60,26 @@ PowerQueue will control only states that the user explicitly maps and enables. O
 will be the default. Users remain responsible for device suitability, electrical safety, local
 regulations, and avoiding conflicting automations.
 
+## Development
+
+```bash
+npm ci
+npm run build      # adapter (build/) and admin UI (admin/index.html + admin/assets/)
+npm run check      # typecheck backend and admin
+npm run lint
+npm test
+```
+
+## Changelog
+
+<!-- Add changes for the next release here; the release script turns this into a version entry. -->
+
+### **WORK IN PROGRESS**
+
+- (typhosj) Adapter scaffold: TypeScript runtime, React admin UI, CI and release tooling.
+
 ## License
 
 MIT
+
+Copyright (c) 2026 PowerQueue contributors

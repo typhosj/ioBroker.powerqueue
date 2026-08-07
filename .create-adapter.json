@@ -1,0 +1,58 @@
+{
+    "cli": true,
+    "target": "directory",
+    "adapterName": "powerqueue",
+    "title": "PowerQueue",
+    "description": "Distributes an available electrical power budget among prioritized, flexible consumers",
+    "keywords": ["energy", "power", "surplus", "pv", "load-management", "priority"],
+    "contributors": [],
+    "expert": "yes",
+    "features": ["adapter"],
+    "adminFeatures": [],
+    "type": "energy",
+    "startMode": "daemon",
+    "connectionType": "local",
+    "dataSource": "push",
+    "connectionIndicator": "yes",
+    "adapterSettings": [
+        {
+            "key": "mode",
+            "defaultValue": "observe",
+            "inputType": "text",
+            "label": "Operating mode"
+        },
+        {
+            "key": "gridPowerId",
+            "defaultValue": "",
+            "inputType": "text",
+            "label": "Grid power state"
+        },
+        {
+            "key": "reserveWatts",
+            "defaultValue": 200,
+            "inputType": "number",
+            "label": "Reserve (W)"
+        }
+    ],
+    "language": "TypeScript",
+    "nodeVersion": "22",
+    "adminUi": "react",
+    "tabReact": "no",
+    "tools": ["ESLint", "type checking", "Prettier"],
+    "eslintConfig": "official",
+    "i18n": "JSON",
+    "releaseScript": "yes",
+    "devServer": "no",
+    "indentation": "Space (4)",
+    "quotes": "single",
+    "authorName": "typhosj",
+    "authorGithub": "typhosj",
+    "authorEmail": "typhosj@gmx.de",
+    "gitRemoteProtocol": "HTTPS",
+    "gitCommit": "no",
+    "defaultBranch": "main",
+    "license": "MIT License",
+    "dependabot": "yes",
+    "replay": "C:\\Users\\manuel\\AppData\\Local\\Temp\\claude\\c--Users-manuel-Documents-repo-iobroker-adapters-powerqueue-ioBroker-powerqueue\\457f8f20-446b-4ded-9282-0499b3821447\\scratchpad\\.create-adapter.json",
+    "creatorVersion": "3.1.5"
+}
