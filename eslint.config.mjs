@@ -24,6 +24,15 @@ export default [
         ],
     },
     {
+        // Type members and test helpers carry their meaning in their names and in the comments
+        // that matter; a mandatory doc block per property or per fixture only adds noise.
+        files: ['src/lib/types.ts', '**/*.test.ts'],
+        rules: {
+            'jsdoc/require-jsdoc': 'off',
+            'jsdoc/require-param': 'off',
+        },
+    },
+    {
         // you may disable some 'jsdoc' warnings - but using jsdoc is highly recommended
         // as this improves maintainability. jsdoc warnings will not block build process.
         rules: {
