@@ -43,8 +43,17 @@
             "uk": "Розподіляє доступний бюджет електроенергії між пріоритетними гнучкими споживачами",
             "zh-cn": "在优先、灵活的消费者之间分配可用电力预算"
         },
-        "authors": ["typhosj <typhosj@gmx.de>"],
-        "keywords": ["energy", "power", "surplus", "pv", "load-management", "priority"],
+        "authors": [
+            "typhosj <typhosj@gmx.de>"
+        ],
+        "keywords": [
+            "energy",
+            "power",
+            "surplus",
+            "pv",
+            "load-management",
+            "priority"
+        ],
         "licenseInformation": {
             "type": "free",
             "license": "MIT"
@@ -80,7 +89,17 @@
     "native": {
         "mode": "observe",
         "gridPowerId": "",
-        "reserveWatts": 200
+        "gridImportPositive": true,
+        "gridConfirmed": false,
+        "batteryPowerId": "",
+        "batteryChargePositive": true,
+        "batteryConfirmed": false,
+        "batterySocId": "",
+        "minBatterySoc": null,
+        "reserveW": 200,
+        "maxAgeSeconds": 300,
+        "smoothingSeconds": 60,
+        "consumers": []
     },
     "objects": [],
     "instanceObjects": [

@@ -10,7 +10,10 @@
         "resolveJsonModule": true,
         "esModuleInterop": true,
         "skipLibCheck": true,
-        "types": ["vite/client"]
+        "types": ["vite/client", "iobroker", "mocha", "chai"]
     },
-    "include": ["src/**/*.ts", "src/**/*.tsx"]
+    // The admin UI drives the very same allocator and configuration model the adapter runs, so the
+    // shared modules in src/lib are part of this program too.
+    "include": ["src/**/*.ts", "src/**/*.tsx", "../src/lib/**/*.ts"],
+    "exclude": ["../src/lib/**/*.test.ts"]
 }

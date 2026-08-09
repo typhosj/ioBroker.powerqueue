@@ -26,7 +26,7 @@ export default [
     {
         // Type members and test helpers carry their meaning in their names and in the comments
         // that matter; a mandatory doc block per property or per fixture only adds noise.
-        files: ['src/lib/types.ts', '**/*.test.ts'],
+        files: ['src/lib/types.ts', 'src/lib/config.ts', 'src-admin/src/**', '**/*.test.ts'],
         rules: {
             'jsdoc/require-jsdoc': 'off',
             'jsdoc/require-param': 'off',
