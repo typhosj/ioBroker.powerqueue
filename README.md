@@ -92,6 +92,8 @@ npm test
 ### **WORK IN PROGRESS**
 
 - (typhosj) Runtime: inputs, evaluation loop, published plan and armed control writes.
+- (typhosj) Devices tab: house battery, reserve, and the full device list with order and switching
+  times.
 
 ### 0.0.1 (2026-08-07)
 

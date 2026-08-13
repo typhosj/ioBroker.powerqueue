@@ -11,6 +11,7 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 
 import { validateNative, type NativeConfig } from '../../src/lib/config';
+import { Devices } from './Devices';
 import { FirstRun } from './FirstRun';
 import { Simulation } from './Simulation';
 
@@ -88,10 +89,18 @@ class App extends GenericApp<GenericAppProps, AppState> {
                     value={this.state.tab}
                 >
                     <Tab label={I18n.t('Setup')} />
+                    <Tab label={I18n.t('Devices')} />
                     <Tab label={I18n.t('Simulation')} />
                 </Tabs>
                 {this.state.tab === 0 ? (
                     <FirstRun
+                        native={native}
+                        onChange={(attr, value) => this.updateNativeValue(attr, value)}
+                        socket={this.socket}
+                        theme={{ theme: this.state.theme, themeType: this.state.themeType }}
+                    />
+                ) : this.state.tab === 1 ? (
+                    <Devices
                         native={native}
                         onChange={(attr, value) => this.updateNativeValue(attr, value)}
                         socket={this.socket}

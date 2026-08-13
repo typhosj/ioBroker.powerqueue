@@ -31,7 +31,7 @@ import { CONSUMER_REASON_TEXT, CONSUMER_STATE_TEXT } from '../../src/lib/reasons
 const AMBIGUOUS_W = 50;
 
 /** One live reading of a foreign state. */
-interface LiveValue {
+export interface LiveValue {
     value: number | null;
     ts: number;
 }
@@ -43,7 +43,7 @@ interface LiveValue {
  * @param id - object ID, empty when nothing is selected
  * @returns the current value and its timestamp
  */
-function useLiveValue(socket: AdminConnection, id: string): LiveValue {
+export function useLiveValue(socket: AdminConnection, id: string): LiveValue {
     const [live, setLive] = React.useState<LiveValue>({ value: null, ts: 0 });
 
     React.useEffect(() => {
@@ -63,7 +63,7 @@ function useLiveValue(socket: AdminConnection, id: string): LiveValue {
     return live;
 }
 
-interface SelectStateButtonProps {
+export interface SelectStateButtonProps {
     label: string;
     value: string;
     socket: AdminConnection;
@@ -83,7 +83,7 @@ export interface SelectIDTheme {
  * @param props - label, current selection and what may be selected
  * @returns a button that opens the object browser and shows the current selection
  */
-function SelectStateButton(props: SelectStateButtonProps): React.JSX.Element {
+export function SelectStateButton(props: SelectStateButtonProps): React.JSX.Element {
     const [open, setOpen] = React.useState(false);
 
     return (
