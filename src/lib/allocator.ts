@@ -57,6 +57,28 @@ export function smooth(samples: Sample[], now: number, windowMs: number, maxAgeM
 }
 
 /**
+ * Upper bound for the grid history. A source that reports every few milliseconds must not be able
+ * to grow the buffer without limit inside a long smoothing window.
+ */
+const MAX_SAMPLES = 600;
+
+/**
+ * Drop readings that have left the smoothing window.
+ *
+ * The newest reading always survives: {@link smooth} needs it to decide freshness, and dropping it
+ * would turn a stale source into a missing one.
+ *
+ * @param samples - recent readings, oldest first
+ * @param now - evaluation timestamp
+ * @param windowMs - smoothing window
+ * @returns the readings still worth keeping, oldest first
+ */
+export function pruneSamples(samples: Sample[], now: number, windowMs: number): Sample[] {
+    const kept = samples.filter(sample => now - sample.ts <= windowMs);
+    return (kept.length ? kept : samples.slice(-1)).slice(-MAX_SAMPLES);
+}
+
+/**
  * Normalize a signed reading to the internal convention (grid: import positive, battery: charging
  * positive).
  *
@@ -323,6 +345,19 @@ export function allocate(config: Config, snapshot: Snapshot, runtime: Runtime): 
  */
 function localDay(ts: number): string {
     return new Date(ts).toDateString();
+}
+
+/**
+ * Default expiry of a manual override: someone who switches a device by hand owns it for the rest
+ * of the day, not forever.
+ *
+ * @param ts - timestamp in milliseconds
+ * @returns the next local midnight after `ts`
+ */
+export function nextMidnight(ts: number): number {
+    const date = new Date(ts);
+    date.setHours(24, 0, 0, 0);
+    return date.getTime();
 }
 
 /**

@@ -4,7 +4,7 @@
  */
 
 import { expect } from 'chai';
-import { allocate, applyPlan, emptyRuntime, smooth } from './allocator';
+import { allocate, applyPlan, emptyRuntime, nextMidnight, pruneSamples, smooth } from './allocator';
 import type { Config, ConsumerConfig, ConsumerRuntime, Plan, Runtime, Snapshot } from './types';
 
 const T0 = new Date('2026-08-09T12:00:00Z').getTime();
@@ -84,6 +84,38 @@ describe('smooth', () => {
 
     it('reports a missing source', () => {
         expect(smooth([], T0, MINUTE, 5 * MINUTE)).to.equal(null);
+    });
+});
+
+describe('pruneSamples', () => {
+    it('drops readings that left the window', () => {
+        const samples = [
+            { value: 1, ts: T0 - 5 * MINUTE },
+            { value: 2, ts: T0 - 30_000 },
+            { value: 3, ts: T0 },
+        ];
+        expect(pruneSamples(samples, T0, MINUTE)).to.deep.equal(samples.slice(1));
+    });
+
+    it('keeps the newest reading so a stale source stays visible', () => {
+        const samples = [{ value: 1, ts: T0 - 10 * MINUTE }];
+        expect(pruneSamples(samples, T0, MINUTE)).to.deep.equal(samples);
+    });
+
+    it('bounds the buffer for a fast source', () => {
+        const samples = Array.from({ length: 1000 }, (_unused, index) => ({ value: index, ts: T0 }));
+        const pruned = pruneSamples(samples, T0, MINUTE);
+        expect(pruned).to.have.lengthOf(600);
+        expect(pruned[pruned.length - 1].value).to.equal(999);
+    });
+});
+
+describe('nextMidnight', () => {
+    it('expires an override at the end of the local day', () => {
+        const midnight = nextMidnight(T0);
+        expect(midnight).to.be.greaterThan(T0);
+        expect(new Date(midnight).getHours()).to.equal(0);
+        expect(midnight - T0).to.be.at.most(24 * 60 * MINUTE);
     });
 });
 

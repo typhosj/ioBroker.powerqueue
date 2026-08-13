@@ -6,7 +6,8 @@ power budget among prioritized, flexible consumers.
 The adapter will use existing ioBroker states for grid power, battery state of charge, device
 availability, feedback, and control. It will not implement manufacturer protocols itself.
 
-> Status: product and implementation planning. No runnable adapter has been released yet.
+> Status: in development. The adapter runs and publishes its plan, but no version has been
+> released yet.
 
 ## Product promise
 
@@ -42,6 +43,20 @@ Modulating loads, one-shot job loads, deadlines, weekday windows and daily runti
 deliberately deferred to later versions. Power values are numeric from the start, so adding them
 will not change any published state.
 
+## Published states
+
+- `plan.valid`, `plan.reason`, `plan.reasonText`, `plan.updated` — what PowerQueue decided and why
+- `budget.*` — the waterfall from the grid reading to the unallocated watts
+- `consumers.<key>.*` — state, reason, proposed and applied power, runtime today, last change and
+  the expiry of a manual override
+
+The consumer states are also the restart-safe runtime state: minimum on/off times and the daily
+runtime survive a restart because they are read back from these states.
+
+In `observe` no foreign state is ever written. In `control` PowerQueue writes only the switch of a
+consumer that is explicitly armed, and only when its target changes. A command from anyone else
+hands the device over until midnight.
+
 ## Non-goals for the first release
 
 - No device-specific drivers or account integrations
@@ -75,6 +90,8 @@ npm test
 <!-- Add changes for the next release here; the release script turns this into a version entry. -->
 
 ### **WORK IN PROGRESS**
+
+- (typhosj) Runtime: inputs, evaluation loop, published plan and armed control writes.
 
 ### 0.0.1 (2026-08-07)
 
