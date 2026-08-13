@@ -7,10 +7,11 @@
  */
 
 import { I18n, InfoBox } from '@iobroker/adapter-react-v5';
-import { Add, ArrowDownward, ArrowUpward, Delete } from '@mui/icons-material';
+import { Add, ArrowDownward, ArrowUpward, Delete, ExpandLess, ExpandMore } from '@mui/icons-material';
 import {
     Box,
     Button,
+    Collapse,
     Divider,
     FormControlLabel,
     IconButton,
@@ -25,7 +26,8 @@ import type { AdminConnection } from '@iobroker/socket-client';
 import React from 'react';
 
 import { DEFAULT_CONSUMER, newConsumerKey, type NativeConfig, type NativeConsumer } from '../../src/lib/config';
-import { SelectStateButton, useLiveValue, type SelectIDTheme } from './FirstRun';
+import { isPowerState, SelectStateButton, useLiveValue, type SelectIDTheme } from './FirstRun';
+import { positiveMeansFirst } from './sign';
 
 /** Below this the two battery sentences would not differ meaningfully, so the choice stays locked. */
 const AMBIGUOUS_W = 50;
@@ -43,11 +45,45 @@ function isNumber(obj: ioBroker.Object): boolean {
     return obj.common?.type === 'number';
 }
 
+interface AdoptMeasuredPowerProps {
+    socket: AdminConnection;
+    feedbackId: string;
+    onAdopt: (watts: number) => void;
+}
+
+/**
+ * The nominal power has to be known before the device runs, so it cannot be a state: a measured
+ * power reads zero while the device is off, and that is exactly when PowerQueue has to decide
+ * whether the surplus would cover it. What the measurement can do is fill the field in once, while
+ * the device happens to be running.
+ *
+ * @param props - the measured power state and what to do with its value
+ * @returns a button that copies the current reading into the configured power, or nothing
+ */
+function AdoptMeasuredPower(props: AdoptMeasuredPowerProps): React.JSX.Element | null {
+    const live = useLiveValue(props.socket, props.feedbackId);
+    if (live.value === null || live.value < 1) {
+        return null;
+    }
+    const watts = Math.round(live.value);
+
+    return (
+        <Button
+            onClick={() => props.onAdopt(watts)}
+            size="small"
+            sx={{ alignSelf: 'flex-start' }}
+        >
+            {I18n.t('It is running now: use the measured %s W', String(watts))}
+        </Button>
+    );
+}
+
 interface DevicesProps {
     native: NativeConfig;
     socket: AdminConnection;
     theme: SelectIDTheme;
-    onChange: (attr: keyof NativeConfig, value: unknown) => void;
+    /** Applied in one state update, so fields that belong together cannot be lost separately. */
+    onChange: (patch: Partial<NativeConfig>) => void;
 }
 
 /**
@@ -66,10 +102,9 @@ export function Devices(props: DevicesProps): React.JSX.Element {
      * @param patch - the fields that change
      */
     function update(key: string, patch: Partial<NativeConsumer>): void {
-        onChange(
-            'consumers',
-            native.consumers.map(consumer => (consumer.key === key ? { ...consumer, ...patch } : consumer)),
-        );
+        onChange({
+            consumers: native.consumers.map(consumer => (consumer.key === key ? { ...consumer, ...patch } : consumer)),
+        });
     }
 
     /**
@@ -85,10 +120,34 @@ export function Devices(props: DevicesProps): React.JSX.Element {
         const moved = [...ordered];
         [moved[index], moved[target]] = [moved[target], moved[index]];
         // Renumbering keeps the priorities gap-free, so the order the user sees is the stored order.
-        onChange(
-            'consumers',
-            moved.map((consumer, position) => ({ ...consumer, priority: position + 1 })),
-        );
+        onChange({ consumers: moved.map((consumer, position) => ({ ...consumer, priority: position + 1 })) });
+    }
+
+    // A device that still needs input opens itself; a finished one stays folded until it is asked for.
+    const [expanded, setExpanded] = React.useState<Record<string, boolean>>({});
+
+    /**
+     * @param consumer - the consumer whose card is drawn
+     * @returns whether its details are visible
+     */
+    function isExpanded(consumer: NativeConsumer): boolean {
+        return expanded[consumer.key] ?? !(consumer.targetId && consumer.nominalPowerW > 0);
+    }
+
+    /**
+     * @param consumer - the consumer whose card is folded
+     * @returns the one line that has to be enough while the details are hidden
+     */
+    function summary(consumer: NativeConsumer): string {
+        const parts = [I18n.t('%s W', String(consumer.nominalPowerW))];
+        if (!consumer.enabled) {
+            parts.push(I18n.t('not taking part'));
+        } else if (!consumer.armed) {
+            parts.push(I18n.t('proposal only'));
+        } else {
+            parts.push(I18n.t('may be switched'));
+        }
+        return parts.join(' · ');
     }
 
     const magnitude = battery.value === null ? 0 : Math.abs(battery.value);
@@ -104,12 +163,9 @@ export function Devices(props: DevicesProps): React.JSX.Element {
                     )}
                 </Typography>
                 <SelectStateButton
-                    filterFunc={isNumber}
+                    filterFunc={isPowerState}
                     label={I18n.t('Select battery power')}
-                    onSelect={id => {
-                        onChange('batteryPowerId', id);
-                        onChange('batteryConfirmed', false);
-                    }}
+                    onSelect={id => onChange({ batteryPowerId: id, batteryConfirmed: false })}
                     socket={props.socket}
                     theme={props.theme}
                     value={native.batteryPowerId}
@@ -127,13 +183,18 @@ export function Devices(props: DevicesProps): React.JSX.Element {
                             <Box>
                                 <Typography variant="body2">{I18n.t('Which sentence is true right now?')}</Typography>
                                 <RadioGroup
-                                    onChange={event => {
-                                        onChange('batteryChargePositive', event.target.value === 'charge');
-                                        onChange('batteryConfirmed', true);
-                                    }}
+                                    onChange={event =>
+                                        onChange({
+                                            batteryChargePositive: positiveMeansFirst(
+                                                event.target.value === 'charge',
+                                                battery.value! > 0,
+                                            ),
+                                            batteryConfirmed: true,
+                                        })
+                                    }
                                     value={
                                         native.batteryConfirmed
-                                            ? native.batteryChargePositive === battery.value! > 0
+                                            ? positiveMeansFirst(native.batteryChargePositive, battery.value! > 0)
                                                 ? 'charge'
                                                 : 'discharge'
                                             : ''
@@ -145,7 +206,7 @@ export function Devices(props: DevicesProps): React.JSX.Element {
                                             'Right now the battery is being charged with %s W.',
                                             String(Math.round(magnitude)),
                                         )}
-                                        value={battery.value! > 0 ? 'charge' : 'discharge'}
+                                        value="charge"
                                     />
                                     <FormControlLabel
                                         control={<Radio />}
@@ -153,7 +214,7 @@ export function Devices(props: DevicesProps): React.JSX.Element {
                                             'Right now the battery is supplying %s W.',
                                             String(Math.round(magnitude)),
                                         )}
-                                        value={battery.value! > 0 ? 'discharge' : 'charge'}
+                                        value="discharge"
                                     />
                                 </RadioGroup>
                             </Box>
@@ -162,7 +223,7 @@ export function Devices(props: DevicesProps): React.JSX.Element {
                         <SelectStateButton
                             filterFunc={isNumber}
                             label={I18n.t('Select charge level')}
-                            onSelect={id => onChange('batterySocId', id)}
+                            onSelect={id => onChange({ batterySocId: id })}
                             socket={props.socket}
                             theme={props.theme}
                             value={native.batterySocId}
@@ -172,10 +233,9 @@ export function Devices(props: DevicesProps): React.JSX.Element {
                                 helperText={I18n.t('Below this level nothing is handed out. Leave empty to ignore it.')}
                                 label={I18n.t('Minimum charge level (%)')}
                                 onChange={event =>
-                                    onChange(
-                                        'minBatterySoc',
-                                        event.target.value === '' ? null : Number(event.target.value),
-                                    )
+                                    onChange({
+                                        minBatterySoc: event.target.value === '' ? null : Number(event.target.value),
+                                    })
                                 }
                                 type="number"
                                 value={native.minBatterySoc ?? ''}
@@ -184,12 +244,14 @@ export function Devices(props: DevicesProps): React.JSX.Element {
                         ) : null}
                         <Button
                             color="inherit"
-                            onClick={() => {
-                                onChange('batteryPowerId', '');
-                                onChange('batterySocId', '');
-                                onChange('batteryConfirmed', false);
-                                onChange('minBatterySoc', null);
-                            }}
+                            onClick={() =>
+                                onChange({
+                                    batteryPowerId: '',
+                                    batterySocId: '',
+                                    batteryConfirmed: false,
+                                    minBatterySoc: null,
+                                })
+                            }
                             size="small"
                             sx={{ alignSelf: 'flex-start' }}
                         >
@@ -208,7 +270,7 @@ export function Devices(props: DevicesProps): React.JSX.Element {
                         'Surplus power PowerQueue never hands out, so a kettle or a hair dryer does not immediately pull from the grid.',
                     )}
                     label={I18n.t('Keep in reserve (W)')}
-                    onChange={event => onChange('reserveW', Number(event.target.value))}
+                    onChange={event => onChange({ reserveW: Number(event.target.value) })}
                     type="number"
                     value={native.reserveW}
                     variant="standard"
@@ -230,12 +292,25 @@ export function Devices(props: DevicesProps): React.JSX.Element {
                         variant="outlined"
                     >
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Typography
-                                sx={{ flexGrow: 1 }}
-                                variant="subtitle1"
+                            <IconButton
+                                onClick={() => setExpanded({ ...expanded, [consumer.key]: !isExpanded(consumer) })}
+                                title={isExpanded(consumer) ? I18n.t('Hide details') : I18n.t('Show details')}
                             >
-                                {`${position + 1}. ${consumer.name || I18n.t('Unnamed device')}`}
-                            </Typography>
+                                {isExpanded(consumer) ? <ExpandLess /> : <ExpandMore />}
+                            </IconButton>
+                            <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                                <Typography variant="subtitle1">
+                                    {`${position + 1}. ${consumer.name || I18n.t('Unnamed device')}`}
+                                </Typography>
+                                {isExpanded(consumer) ? null : (
+                                    <Typography
+                                        color="text.secondary"
+                                        variant="body2"
+                                    >
+                                        {summary(consumer)}
+                                    </Typography>
+                                )}
+                            </Box>
                             <IconButton
                                 disabled={position === 0}
                                 onClick={() => move(consumer.key, -1)}
@@ -252,10 +327,9 @@ export function Devices(props: DevicesProps): React.JSX.Element {
                             </IconButton>
                             <IconButton
                                 onClick={() =>
-                                    onChange(
-                                        'consumers',
-                                        native.consumers.filter(entry => entry.key !== consumer.key),
-                                    )
+                                    onChange({
+                                        consumers: native.consumers.filter(entry => entry.key !== consumer.key),
+                                    })
                                 }
                                 title={I18n.t('Remove device')}
                             >
@@ -263,129 +337,160 @@ export function Devices(props: DevicesProps): React.JSX.Element {
                             </IconButton>
                         </Box>
 
-                        <TextField
-                            label={I18n.t('Name of the device')}
-                            onChange={event => update(consumer.key, { name: event.target.value })}
-                            value={consumer.name}
-                            variant="standard"
-                        />
-                        <SelectStateButton
-                            filterFunc={isSwitch}
-                            label={I18n.t('Select switch')}
-                            onSelect={(id, name) =>
-                                update(consumer.key, { targetId: id, name: consumer.name || name || id })
-                            }
-                            socket={props.socket}
-                            theme={props.theme}
-                            value={consumer.targetId}
-                        />
-                        <SelectStateButton
-                            filterFunc={isNumber}
-                            label={I18n.t('Select measured power (optional)')}
-                            onSelect={id => update(consumer.key, { feedbackId: id })}
-                            socket={props.socket}
-                            theme={props.theme}
-                            value={consumer.feedbackId}
-                        />
-
-                        <SelectStateButton
-                            filterFunc={obj => obj.common?.type === 'boolean' || obj.common?.type === 'number'}
-                            label={I18n.t('Only when this is set (optional)')}
-                            onSelect={id => update(consumer.key, { availabilityId: id })}
-                            socket={props.socket}
-                            theme={props.theme}
-                            value={consumer.availabilityId ?? ''}
-                        />
-                        {consumer.availabilityId ? (
-                            <Box sx={{ pl: 1 }}>
-                                <RadioGroup
-                                    onChange={event =>
-                                        update(consumer.key, { availableWhen: event.target.value === 'on' })
-                                    }
-                                    value={(consumer.availableWhen ?? true) ? 'on' : 'off'}
-                                >
-                                    <FormControlLabel
-                                        control={<Radio />}
-                                        label={I18n.t('%s may run while that state is on.', consumer.name || '')}
-                                        value="on"
-                                    />
-                                    <FormControlLabel
-                                        control={<Radio />}
-                                        label={I18n.t('%s may run while that state is off.', consumer.name || '')}
-                                        value="off"
-                                    />
-                                </RadioGroup>
-                                <Button
-                                    color="inherit"
-                                    onClick={() => update(consumer.key, { availabilityId: '' })}
-                                    size="small"
-                                >
-                                    {I18n.t('Always allow it')}
-                                </Button>
-                            </Box>
-                        ) : null}
-
-                        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                        <Collapse
+                            in={isExpanded(consumer)}
+                            sx={{ '& .MuiCollapse-wrapperInner': { display: 'flex', flexDirection: 'column', gap: 2 } }}
+                        >
                             <TextField
-                                label={I18n.t('Power consumption (W)')}
-                                onChange={event => update(consumer.key, { nominalPowerW: Number(event.target.value) })}
-                                type="number"
-                                value={consumer.nominalPowerW}
+                                label={I18n.t('Name of the device')}
+                                onChange={event => update(consumer.key, { name: event.target.value })}
+                                value={consumer.name}
                                 variant="standard"
                             />
-                            <TextField
-                                helperText={I18n.t('Keeps running at least this long.')}
-                                label={I18n.t('Minimum runtime (min)')}
-                                onChange={event => update(consumer.key, { minOnMinutes: Number(event.target.value) })}
-                                type="number"
-                                value={consumer.minOnMinutes}
-                                variant="standard"
+                            <SelectStateButton
+                                filterFunc={isSwitch}
+                                label={I18n.t('Select switch')}
+                                onSelect={(id, name) =>
+                                    update(consumer.key, { targetId: id, name: consumer.name || name || id })
+                                }
+                                socket={props.socket}
+                                theme={props.theme}
+                                value={consumer.targetId}
                             />
-                            <TextField
-                                helperText={I18n.t('Waits at least this long before it starts again.')}
-                                label={I18n.t('Minimum pause (min)')}
-                                onChange={event => update(consumer.key, { minOffMinutes: Number(event.target.value) })}
-                                type="number"
-                                value={consumer.minOffMinutes}
-                                variant="standard"
+                            <SelectStateButton
+                                filterFunc={isPowerState}
+                                label={I18n.t('Select measured power (optional)')}
+                                onSelect={id => update(consumer.key, { feedbackId: id })}
+                                socket={props.socket}
+                                theme={props.theme}
+                                value={consumer.feedbackId}
                             />
-                        </Box>
 
-                        <FormControlLabel
-                            control={
-                                <Switch
-                                    checked={consumer.enabled}
-                                    onChange={event => update(consumer.key, { enabled: event.target.checked })}
-                                />
-                            }
-                            label={I18n.t('Takes part in the planning')}
-                        />
-                        <FormControlLabel
-                            control={
-                                <Switch
-                                    checked={consumer.armed}
-                                    onChange={event => update(consumer.key, { armed: event.target.checked })}
-                                />
-                            }
-                            label={I18n.t('PowerQueue may switch this device')}
-                        />
-                        {consumer.armed && native.mode !== 'control' ? (
                             <Typography
                                 color="text.secondary"
                                 variant="body2"
                             >
-                                {I18n.t('Nothing is switched while PowerQueue only watches.')}
+                                {I18n.t(
+                                    'Some devices may only run under a condition that has nothing to do with power: the car is plugged in, the pool cover is open, nobody is away. If you have a state that says so, PowerQueue keeps the device out of the plan whenever it does not match.',
+                                )}
                             </Typography>
-                        ) : null}
+                            <SelectStateButton
+                                filterFunc={obj => obj.common?.type === 'boolean' || obj.common?.type === 'number'}
+                                label={I18n.t('Extra condition (optional)')}
+                                onSelect={id => update(consumer.key, { availabilityId: id })}
+                                socket={props.socket}
+                                theme={props.theme}
+                                value={consumer.availabilityId ?? ''}
+                            />
+                            {consumer.availabilityId ? (
+                                <Box sx={{ pl: 1 }}>
+                                    <RadioGroup
+                                        onChange={event =>
+                                            update(consumer.key, { availableWhen: event.target.value === 'on' })
+                                        }
+                                        value={(consumer.availableWhen ?? true) ? 'on' : 'off'}
+                                    >
+                                        <FormControlLabel
+                                            control={<Radio />}
+                                            label={I18n.t('%s may run while that state is on.', consumer.name || '')}
+                                            value="on"
+                                        />
+                                        <FormControlLabel
+                                            control={<Radio />}
+                                            label={I18n.t('%s may run while that state is off.', consumer.name || '')}
+                                            value="off"
+                                        />
+                                    </RadioGroup>
+                                    <Button
+                                        color="inherit"
+                                        onClick={() => update(consumer.key, { availabilityId: '' })}
+                                        size="small"
+                                    >
+                                        {I18n.t('Always allow it')}
+                                    </Button>
+                                </Box>
+                            ) : null}
+
+                            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                                <TextField
+                                    helperText={I18n.t(
+                                        'Roughly how much it uses while it runs. The type plate is enough.',
+                                    )}
+                                    label={I18n.t('Power consumption (W)')}
+                                    onChange={event =>
+                                        update(consumer.key, { nominalPowerW: Number(event.target.value) })
+                                    }
+                                    type="number"
+                                    value={consumer.nominalPowerW}
+                                    variant="standard"
+                                />
+                                <TextField
+                                    helperText={I18n.t('Keeps running at least this long.')}
+                                    label={I18n.t('Minimum runtime (min)')}
+                                    onChange={event =>
+                                        update(consumer.key, { minOnMinutes: Number(event.target.value) })
+                                    }
+                                    type="number"
+                                    value={consumer.minOnMinutes}
+                                    variant="standard"
+                                />
+                                <TextField
+                                    helperText={I18n.t('Waits at least this long before it starts again.')}
+                                    label={I18n.t('Minimum pause (min)')}
+                                    onChange={event =>
+                                        update(consumer.key, { minOffMinutes: Number(event.target.value) })
+                                    }
+                                    type="number"
+                                    value={consumer.minOffMinutes}
+                                    variant="standard"
+                                />
+                            </Box>
+                            {consumer.feedbackId ? (
+                                <AdoptMeasuredPower
+                                    feedbackId={consumer.feedbackId}
+                                    onAdopt={watts => update(consumer.key, { nominalPowerW: watts })}
+                                    socket={props.socket}
+                                />
+                            ) : null}
+
+                            <FormControlLabel
+                                control={
+                                    <Switch
+                                        checked={consumer.enabled}
+                                        onChange={event => update(consumer.key, { enabled: event.target.checked })}
+                                    />
+                                }
+                                label={I18n.t('Takes part in the planning')}
+                            />
+                            <FormControlLabel
+                                control={
+                                    <Switch
+                                        checked={consumer.armed}
+                                        onChange={event => update(consumer.key, { armed: event.target.checked })}
+                                    />
+                                }
+                                label={I18n.t('PowerQueue may switch this device')}
+                            />
+                            {consumer.armed && native.mode !== 'control' ? (
+                                <Typography
+                                    color="text.secondary"
+                                    variant="body2"
+                                >
+                                    {I18n.t('Nothing is switched while PowerQueue only watches.')}
+                                </Typography>
+                            ) : null}
+                        </Collapse>
                     </Paper>
                 ))}
 
                 <Button
                     onClick={() =>
-                        onChange('consumers', [
-                            ...native.consumers,
-                            { ...DEFAULT_CONSUMER, key: newConsumerKey(), priority: native.consumers.length + 1 },
-                        ])
+                        onChange({
+                            consumers: [
+                                ...native.consumers,
+                                { ...DEFAULT_CONSUMER, key: newConsumerKey(), priority: native.consumers.length + 1 },
+                            ],
+                        })
                     }
                     startIcon={<Add />}
                     sx={{ alignSelf: 'flex-start' }}

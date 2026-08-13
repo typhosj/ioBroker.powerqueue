@@ -111,6 +111,21 @@ npm test
   adapter crashed on start instead of reporting what was missing.
 - (typhosj) Translations for every supported language.
 - (typhosj) The PowerQueue icon from the chosen logo concept, instead of the scaffold placeholder.
+- (typhosj) Load the socket library in the configuration page, which never opened without it.
+- (typhosj) Ask for the momentary grid power instead of "the meter", and hide energy counters from
+  every power selection.
+- (typhosj) Confirming a sentence works again: two configuration fields changed in one click
+  overwrote each other, and on a meter whose readings are negative the confirmed sentence was
+  mapped back to the other one.
+- (typhosj) The guided setup opens the next step as soon as one is finished, instead of only after
+  leaving the tab and coming back.
+- (typhosj) A device that reports its power can hand its current reading to the configured power
+  with one click.
+- (typhosj) The simulation said "drawing" while the house was feeding in, and the budget lines now
+  say that the handed-out power is part of the free power, not on top of it.
+- (typhosj) Device cards fold away once a device is complete, and say in one line what they hide.
+- (typhosj) The availability condition explains itself instead of being labelled "only when this is
+  set".
 
 ### 0.0.1 (2026-08-07)
 

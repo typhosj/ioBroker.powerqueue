@@ -64,7 +64,8 @@ export function Simulation(props: SimulationProps): React.JSX.Element {
     const step = steps[Math.min(index, steps.length - 1)];
     const names = new Map(native.consumers.map(consumer => [consumer.key, consumer.name]));
 
-    const exported = -step.plan.budget.surplusW;
+    // A positive surplus is power that leaves the house: export plus whatever charges the battery.
+    const surplus = step.plan.budget.surplusW;
 
     return (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, p: 2 }}>
@@ -94,13 +95,13 @@ export function Simulation(props: SimulationProps): React.JSX.Element {
 
             <Box>
                 <Typography variant="body1">
-                    {exported > 0
-                        ? I18n.t('The house is feeding %s into the grid.', watt(exported))
-                        : I18n.t('The house is drawing %s from the grid.', watt(-exported))}
+                    {surplus > 0
+                        ? I18n.t('The house is feeding %s into the grid.', watt(surplus))
+                        : I18n.t('The house is drawing %s from the grid.', watt(-surplus))}
                 </Typography>
                 <Typography variant="body1">
                     {I18n.t(
-                        'Free for flexible devices: %s. Already handed out: %s. Still free: %s.',
+                        'Free for flexible devices: %s, of which %s is already handed out. Still free: %s.',
                         watt(step.plan.budget.availableW),
                         watt(step.plan.budget.allocatedW),
                         watt(step.plan.budget.remainingW),
@@ -110,7 +111,10 @@ export function Simulation(props: SimulationProps): React.JSX.Element {
                     color="text.secondary"
                     variant="body2"
                 >
-                    {I18n.t('Kept in reserve: %s.', watt(step.plan.budget.reserveW))}
+                    {I18n.t(
+                        'A device may only start once the free power covers its own consumption plus the reserve of %s.',
+                        watt(step.plan.budget.reserveW),
+                    )}
                 </Typography>
             </Box>
 

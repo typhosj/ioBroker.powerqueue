@@ -26,9 +26,24 @@ import React from 'react';
 import { allocate } from '../../src/lib/allocator';
 import { DEFAULT_CONSUMER, newConsumerKey, toDomainConfig, type NativeConfig } from '../../src/lib/config';
 import { CONSUMER_REASON_TEXT, CONSUMER_STATE_TEXT } from '../../src/lib/reasons';
+import { positiveMeansFirst } from './sign';
 
 /** Below this the two sentences would not differ meaningfully, so the choice stays locked. */
 const AMBIGUOUS_W = 50;
+
+/** Wh, kWh, Ah: everything that counts energy instead of measuring power right now. */
+const COUNTER_UNIT = /wh|ah/i;
+
+/**
+ * PowerQueue decides from the power that flows at this moment. A meter reading only ever grows, so
+ * offering one for selection is offering a value that can never answer the question.
+ *
+ * @param obj - candidate object
+ * @returns whether the object can carry a momentary power
+ */
+export function isPowerState(obj: ioBroker.Object): boolean {
+    return obj.common?.type === 'number' && !COUNTER_UNIT.test(obj.common.unit ?? '');
+}
 
 /** One live reading of a foreign state. */
 export interface LiveValue {
@@ -126,7 +141,8 @@ interface FirstRunProps {
     native: NativeConfig;
     socket: AdminConnection;
     theme: SelectIDTheme;
-    onChange: (attr: keyof NativeConfig, value: unknown) => void;
+    /** Applied in one state update, so fields that belong together cannot be lost separately. */
+    onChange: (patch: Partial<NativeConfig>) => void;
 }
 
 /**
@@ -142,6 +158,10 @@ export function FirstRun(props: FirstRunProps): React.JSX.Element {
     const openStep = !native.gridConfirmed ? 0 : !consumer || !(consumer.nominalPowerW > 0) ? 1 : 2;
     const [active, setActive] = React.useState(openStep);
 
+    // Move on when a step is finished — but only then, so revisiting an earlier step is not undone
+    // on the next render. Without this the setup only advanced when the tab was left and reopened.
+    React.useEffect(() => setActive(openStep), [openStep]);
+
     const magnitude = grid.value === null ? 0 : Math.abs(grid.value);
     const ambiguous = grid.value === null || magnitude < AMBIGUOUS_W;
 
@@ -150,7 +170,7 @@ export function FirstRun(props: FirstRunProps): React.JSX.Element {
      */
     function patchConsumer(patch: Partial<NonNullable<typeof consumer>>): void {
         const current = consumer ?? { ...DEFAULT_CONSUMER, key: newConsumerKey() };
-        onChange('consumers', [{ ...current, ...patch }, ...native.consumers.slice(1)]);
+        onChange({ consumers: [{ ...current, ...patch }, ...native.consumers.slice(1)] });
     }
 
     return (
@@ -169,16 +189,21 @@ export function FirstRun(props: FirstRunProps): React.JSX.Element {
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                         <Typography variant="body2">
                             {I18n.t(
-                                'PowerQueue needs the meter that measures what your house takes from the grid or feeds into it.',
+                                'PowerQueue needs the power your house draws from the grid or feeds into it at this very moment, in watts.',
+                            )}
+                        </Typography>
+                        <Typography
+                            color="text.secondary"
+                            variant="body2"
+                        >
+                            {I18n.t(
+                                'A meter reading in kWh does not work: it only ever counts up and never says whether you are feeding in right now. Most meters publish both — pick the one that changes when you switch on a large device.',
                             )}
                         </Typography>
                         <SelectStateButton
-                            filterFunc={obj => obj.common?.type === 'number'}
-                            label={I18n.t('Select grid meter')}
-                            onSelect={id => {
-                                onChange('gridPowerId', id);
-                                onChange('gridConfirmed', false);
-                            }}
+                            filterFunc={isPowerState}
+                            label={I18n.t('Select grid power')}
+                            onSelect={id => onChange({ gridPowerId: id, gridConfirmed: false })}
                             socket={props.socket}
                             theme={props.theme}
                             value={native.gridPowerId}
@@ -197,15 +222,22 @@ export function FirstRun(props: FirstRunProps): React.JSX.Element {
                                         {I18n.t('Which sentence is true right now?')}
                                     </Typography>
                                     <RadioGroup
-                                        onChange={event => {
-                                            onChange('gridImportPositive', event.target.value === 'import');
-                                            onChange('gridConfirmed', true);
-                                        }}
+                                        onChange={event =>
+                                            onChange({
+                                                gridImportPositive: positiveMeansFirst(
+                                                    event.target.value === 'drawn',
+                                                    grid.value! > 0,
+                                                ),
+                                                gridConfirmed: true,
+                                            })
+                                        }
+                                        // The sentences keep their own value, so only the stored
+                                        // convention decides which one is selected.
                                         value={
                                             native.gridConfirmed
-                                                ? native.gridImportPositive === grid.value! > 0
-                                                    ? 'import'
-                                                    : 'export'
+                                                ? positiveMeansFirst(native.gridImportPositive, grid.value! > 0)
+                                                    ? 'drawn'
+                                                    : 'fed'
                                                 : ''
                                         }
                                     >
@@ -215,7 +247,7 @@ export function FirstRun(props: FirstRunProps): React.JSX.Element {
                                                 'Right now %s W are being drawn from the grid.',
                                                 String(Math.round(magnitude)),
                                             )}
-                                            value={grid.value! > 0 ? 'import' : 'export'}
+                                            value="drawn"
                                         />
                                         <FormControlLabel
                                             control={<Radio />}
@@ -223,7 +255,7 @@ export function FirstRun(props: FirstRunProps): React.JSX.Element {
                                                 'Right now %s W are being fed into the grid.',
                                                 String(Math.round(magnitude)),
                                             )}
-                                            value={grid.value! > 0 ? 'export' : 'import'}
+                                            value="fed"
                                         />
                                     </RadioGroup>
                                 </Box>
@@ -280,7 +312,7 @@ export function FirstRun(props: FirstRunProps): React.JSX.Element {
                             native={native}
                         />
                         <RadioGroup
-                            onChange={event => onChange('mode', event.target.value)}
+                            onChange={event => onChange({ mode: event.target.value as NativeConfig['mode'] })}
                             value={native.mode}
                         >
                             <FormControlLabel

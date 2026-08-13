@@ -10,7 +10,7 @@ import { Box, StyledEngineProvider, Tab, Tabs, ThemeProvider, Typography } from 
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 
-import { normalizeNative, validateNative } from '../../src/lib/config';
+import { normalizeNative, validateNative, type NativeConfig } from '../../src/lib/config';
 import { Devices } from './Devices';
 import { FirstRun } from './FirstRun';
 import { Simulation } from './Simulation';
@@ -42,6 +42,30 @@ class App extends GenericApp<GenericAppProps, AppState> {
 
     componentDidUpdate(): void {
         this.reportProblems();
+    }
+
+    /**
+     * Apply several configuration fields at once.
+     *
+     * `GenericApp.updateNativeValue` copies the state at call time, so two calls inside one event
+     * handler both start from the old configuration and the first change is lost — which is why
+     * confirming a sentence used to set the "confirmed" flag but not the sign it confirms. Every
+     * tab therefore hands over a whole patch, and it lands in a single state update.
+     *
+     * @param patch - the fields that change
+     */
+    updateNative(patch: Partial<NativeConfig>): void {
+        const native = { ...normalizeNative(this.state.native), ...patch };
+        const changed = this.getIsChanged(native);
+        if (changed !== this.state.changed) {
+            try {
+                // The admin tab shows the unsaved-changes state, exactly as GenericApp does it.
+                window.parent.postMessage(changed ? 'change' : 'nochange', '*');
+            } catch {
+                // ignore
+            }
+        }
+        this.setState({ native, changed });
     }
 
     /**
@@ -97,7 +121,7 @@ class App extends GenericApp<GenericAppProps, AppState> {
                 {this.state.tab === 0 ? (
                     <FirstRun
                         native={native}
-                        onChange={(attr, value) => this.updateNativeValue(attr, value)}
+                        onChange={patch => this.updateNative(patch)}
                         socket={this.socket}
                         theme={{ theme: this.state.theme, themeType: this.state.themeType }}
                     />
@@ -110,7 +134,7 @@ class App extends GenericApp<GenericAppProps, AppState> {
                 ) : this.state.tab === 2 ? (
                     <Devices
                         native={native}
-                        onChange={(attr, value) => this.updateNativeValue(attr, value)}
+                        onChange={patch => this.updateNative(patch)}
                         socket={this.socket}
                         theme={{ theme: this.state.theme, themeType: this.state.themeType }}
                     />

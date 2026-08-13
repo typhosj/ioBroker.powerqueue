@@ -18,7 +18,7 @@ import { duration, watt } from './Simulation';
 
 /** What the table needs per device, and what the header needs on top. */
 const CONSUMER_FIELDS = ['state', 'reason', 'proposedPowerW', 'runtimeTodayS'] as const;
-const BUDGET_FIELDS = ['surplusW', 'availableW', 'allocatedW', 'remainingW'] as const;
+const BUDGET_FIELDS = ['surplusW', 'availableW', 'allocatedW', 'remainingW', 'reserveW'] as const;
 
 type Values = Record<string, ioBroker.StateValue>;
 
@@ -114,10 +114,19 @@ export function Status(props: StatusProps): React.JSX.Element {
                 </Typography>
                 <Typography variant="body1">
                     {I18n.t(
-                        'Free for flexible devices: %s. Already handed out: %s. Still free: %s.',
+                        'Free for flexible devices: %s, of which %s is already handed out. Still free: %s.',
                         watt(budget.availableW),
                         watt(budget.allocatedW),
                         watt(budget.remainingW),
+                    )}
+                </Typography>
+                <Typography
+                    color="text.secondary"
+                    variant="body2"
+                >
+                    {I18n.t(
+                        'A device may only start once the free power covers its own consumption plus the reserve of %s.',
+                        watt(budget.reserveW),
                     )}
                 </Typography>
             </Box>
