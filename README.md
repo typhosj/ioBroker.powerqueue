@@ -1,6 +1,13 @@
+<img src="admin/powerqueue.png" alt="PowerQueue logo" width="180" align="right" />
+
 # ioBroker.powerqueue
 
-<img src="admin/powerqueue.png" alt="PowerQueue logo" width="120" align="right" />
+[![NPM version](https://img.shields.io/npm/v/iobroker.powerqueue.svg)](https://www.npmjs.com/package/iobroker.powerqueue)
+[![Downloads](https://img.shields.io/npm/dm/iobroker.powerqueue.svg)](https://www.npmjs.com/package/iobroker.powerqueue)
+![Number of Installations](https://iobroker.live/badges/powerqueue-installed.svg)
+![Current version in stable repository](https://iobroker.live/badges/powerqueue-stable.svg)
+[![Test and Release](https://github.com/typhosj/ioBroker.powerqueue/actions/workflows/test-and-release.yml/badge.svg)](https://github.com/typhosj/ioBroker.powerqueue/actions/workflows/test-and-release.yml)
+[![License](https://img.shields.io/github/license/typhosj/ioBroker.powerqueue)](LICENSE)
 
 PowerQueue is a vendor-neutral ioBroker adapter that distributes an available electrical
 power budget among prioritized, flexible consumers.
@@ -101,6 +108,7 @@ npm test
 - (typhosj) Survive a stored configuration whose empty device list comes back as an object — the
   adapter crashed on start instead of reporting what was missing.
 - (typhosj) Translations for every supported language.
+- (typhosj) The real PowerQueue icon instead of the scaffold placeholder, drawn as flat SVG paths.
 
 ### 0.0.1 (2026-08-07)
 
