@@ -1,6 +1,8 @@
-<img src="admin/powerqueue.png" alt="PowerQueue logo" width="180" align="right" />
-
 # ioBroker.powerqueue
+
+<p align="center">
+    <img src="admin/powerqueue.png" alt="PowerQueue logo" width="280" />
+</p>
 
 [![NPM version](https://img.shields.io/npm/v/iobroker.powerqueue.svg)](https://www.npmjs.com/package/iobroker.powerqueue)
 [![Downloads](https://img.shields.io/npm/dm/iobroker.powerqueue.svg)](https://www.npmjs.com/package/iobroker.powerqueue)
