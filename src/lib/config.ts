@@ -86,6 +86,21 @@ export const DEFAULT_CONSUMER: Omit<NativeConsumer, 'key'> = {
 };
 
 /**
+ * Repair what the object database hands back.
+ *
+ * A stored configuration is not a `NativeConfig` just because it was one when it was saved: an
+ * empty `consumers` array comes back as an empty object, and an instance that predates a field has
+ * no value for it at all. Everything that reads the configuration goes through here first.
+ *
+ * @param stored - the configuration as it was read from the instance object
+ * @returns a configuration with every field present and `consumers` guaranteed to be an array
+ */
+export function normalizeNative(stored: unknown): NativeConfig {
+    const native = { ...DEFAULT_NATIVE, ...(stored as Partial<NativeConfig>) };
+    return { ...native, consumers: Array.isArray(native.consumers) ? native.consumers : [] };
+}
+
+/**
  * A validation problem, phrased as the household consequence rather than as a field error.
  *
  * `consumerKey` is set when the problem belongs to one consumer, so the UI can point at it.

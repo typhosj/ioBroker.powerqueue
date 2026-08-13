@@ -3,6 +3,7 @@ import {
     DEFAULT_CONSUMER,
     DEFAULT_NATIVE,
     newConsumerKey,
+    normalizeNative,
     subscribedIds,
     toDomainConfig,
     validateNative,
@@ -26,6 +27,19 @@ function usable(overrides: Partial<NativeConfig> = {}): NativeConfig {
 function fields(native: NativeConfig): string[] {
     return validateNative(native).map(problem => problem.field);
 }
+
+describe('normalizeNative', () => {
+    it('survives the empty consumer list the object database hands back as an object', () => {
+        expect(normalizeNative({ ...DEFAULT_NATIVE, consumers: {} }).consumers).to.deep.equal([]);
+    });
+
+    it('fills in fields an older instance never stored', () => {
+        expect(normalizeNative({ gridPowerId: 'goodwe.0.grid.power' })).to.deep.equal({
+            ...DEFAULT_NATIVE,
+            gridPowerId: 'goodwe.0.grid.power',
+        });
+    });
+});
 
 describe('validateNative', () => {
     it('accepts a complete minimal configuration', () => {

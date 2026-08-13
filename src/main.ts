@@ -5,7 +5,14 @@
 import * as utils from '@iobroker/adapter-core';
 
 import { allocate, applyPlan, emptyRuntime, nextMidnight, pruneSamples } from './lib/allocator';
-import { subscribedIds, toDomainConfig, validateNative, type NativeConfig, type NativeConsumer } from './lib/config';
+import {
+    normalizeNative,
+    subscribedIds,
+    toDomainConfig,
+    validateNative,
+    type NativeConfig,
+    type NativeConsumer,
+} from './lib/config';
 import { CONSUMER_REASON_TEXT, CONSUMER_STATE_TEXT, PLAN_REASON_TEXT } from './lib/reasons';
 import type { Budget, Config, Plan, Runtime, Sample, Snapshot } from './lib/types';
 
@@ -105,14 +112,16 @@ class Powerqueue extends utils.Adapter {
      * Is called when databases are connected and adapter received configuration.
      */
     private async onReady(): Promise<void> {
-        this.native = this.config as unknown as NativeConfig;
+        this.native = normalizeNative(this.config);
 
         const problems = validateNative(this.native);
         if (problems.length) {
             // An incomplete configuration is a setup step, not a crash: stay idle and say what is
             // missing, so the admin UI keeps working.
             await this.setState('info.connection', false, true);
-            this.log.error(`PowerQueue is not ready yet: ${problems[0].message}`);
+            // A freshly installed instance is unconfigured by definition, so this is a warning and
+            // not an error: nothing is broken, something is missing.
+            this.log.warn(`PowerQueue is not ready yet: ${problems[0].message}`);
             return;
         }
 

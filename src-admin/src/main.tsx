@@ -10,7 +10,7 @@ import { Box, StyledEngineProvider, Tab, Tabs, ThemeProvider, Typography } from 
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 
-import { validateNative, type NativeConfig } from '../../src/lib/config';
+import { normalizeNative, validateNative } from '../../src/lib/config';
 import { Devices } from './Devices';
 import { FirstRun } from './FirstRun';
 import { Simulation } from './Simulation';
@@ -48,7 +48,7 @@ class App extends GenericApp<GenericAppProps, AppState> {
      * An invalid configuration must not be saveable, so the first problem blocks the save button.
      */
     reportProblems(): void {
-        const problems = validateNative(this.state.native as NativeConfig);
+        const problems = validateNative(normalizeNative(this.state.native));
         this.setConfigurationError(problems.length ? I18n.t(problems[0].message, ...(problems[0].args ?? [])) : '');
     }
 
@@ -57,7 +57,7 @@ class App extends GenericApp<GenericAppProps, AppState> {
      * and, if something is missing, what to do next.
      */
     renderStatus(): React.JSX.Element {
-        const native = this.state.native as NativeConfig;
+        const native = normalizeNative(this.state.native);
         const problems = validateNative(native);
         const mode = {
             off: I18n.t('switched off'),
@@ -80,7 +80,7 @@ class App extends GenericApp<GenericAppProps, AppState> {
     }
 
     renderContent(): React.JSX.Element {
-        const native = this.state.native as NativeConfig;
+        const native = normalizeNative(this.state.native);
 
         return (
             <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>

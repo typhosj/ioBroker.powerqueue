@@ -96,6 +96,9 @@ npm test
   times.
 - (typhosj) "Right now" tab: the live plan of the running instance, in the language of the admin UI.
 - (typhosj) Optional availability condition per device, with the value that means "may run".
+- (typhosj) Survive a stored configuration whose empty device list comes back as an object — the
+  adapter crashed on start instead of reporting what was missing.
+- (typhosj) Translations for every supported language.
 
 ### 0.0.1 (2026-08-07)
 

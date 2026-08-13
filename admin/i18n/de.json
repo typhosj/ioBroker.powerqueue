@@ -1,5 +1,4 @@
 {
-    "powerqueue adapter settings": "PowerQueue",
     "%s may run while that state is off.": "%s darf laufen, solange dieser Zustand aus ist.",
     "%s may run while that state is on.": "%s darf laufen, solange dieser Zustand an ist.",
     "%s runs %s on this day.": "%s läuft an diesem Tag %s.",
@@ -129,6 +128,7 @@
     "Why": "Warum",
     "Without a grid meter PowerQueue cannot decide anything for this device.": "Ohne Zähler kann PowerQueue für dieses Gerät nichts entscheiden.",
     "nothing selected yet": "noch nichts ausgewählt",
+    "powerqueue adapter settings": "PowerQueue",
     "switched off": "ist ausgeschaltet",
     "watching and switching": "beobachtet und schaltet",
     "watching only": "beobachtet nur"
