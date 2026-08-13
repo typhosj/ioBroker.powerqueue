@@ -1,6 +1,8 @@
 # ioBroker.powerqueue
 
-PowerQueue is a planned vendor-neutral ioBroker adapter that distributes an available electrical
+<img src="admin/powerqueue.png" alt="PowerQueue logo" width="120" align="right" />
+
+PowerQueue is a vendor-neutral ioBroker adapter that distributes an available electrical
 power budget among prioritized, flexible consumers.
 
 The adapter will use existing ioBroker states for grid power, battery state of charge, device
