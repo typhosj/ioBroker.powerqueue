@@ -17,8 +17,8 @@ power budget among prioritized, flexible consumers.
 The adapter will use existing ioBroker states for grid power, battery state of charge, device
 availability, feedback, and control. It will not implement manufacturer protocols itself.
 
-> Status: in development. The adapter runs and publishes its plan, but no version has been
-> released yet.
+> Status: first public release. Observation mode is the default — PowerQueue only switches a device
+> after you have set it to control and released that device explicitly.
 
 ## Product promise
 
