@@ -1,128 +1,141 @@
 {
-    "common": {
-        "name": "powerqueue",
-        "version": "0.0.1",
-        "news": {
-            "0.0.1": {
-                "en": "initial release",
-                "de": "Erstveröffentlichung",
-                "ru": "Начальная версия",
-                "pt": "lançamento inicial",
-                "nl": "Eerste uitgave",
-                "fr": "Première version",
-                "it": "Versione iniziale",
-                "es": "Versión inicial",
-                "pl": "Pierwsze wydanie",
-                "uk": "Початкова версія",
-                "zh-cn": "首次出版"
-            }
-        },
-        "titleLang": {
-            "en": "PowerQueue",
-            "de": "PowerQueue",
-            "ru": "PowerQueue",
-            "pt": "PowerQueue",
-            "nl": "PowerQueue",
-            "fr": "PowerQueue",
-            "it": "PowerQueue",
-            "es": "Cola de energía",
-            "pl": "Kolejka mocy",
-            "uk": "PowerQueue",
-            "zh-cn": "电源队列"
-        },
-        "desc": {
-            "en": "Distributes an available electrical power budget among prioritized, flexible consumers",
-            "de": "Verteilt ein verfügbares Strombudget auf priorisierte, flexible Verbraucher",
-            "ru": "Распределяет доступный бюджет электроэнергии между приоритетными и гибкими потребителями.",
-            "pt": "Distribui um orçamento de energia elétrica disponível entre consumidores flexíveis e priorizados",
-            "nl": "Verdeelt een beschikbaar elektriciteitsbudget onder geprioriteerde, flexibele consumenten",
-            "fr": "Distribue un budget d’énergie électrique disponible entre des consommateurs flexibles et prioritaires",
-            "it": "Distribuisce il budget di energia elettrica disponibile tra consumatori flessibili e prioritari",
-            "es": "Distribuye un presupuesto de energía eléctrica disponible entre consumidores flexibles y priorizados.",
-            "pl": "Rozdziela dostępny budżet energii elektrycznej wśród priorytetowych, elastycznych odbiorców",
-            "uk": "Розподіляє доступний бюджет електроенергії між пріоритетними гнучкими споживачами",
-            "zh-cn": "在优先、灵活的消费者之间分配可用电力预算"
-        },
-        "authors": [
-            "typhosj <typhosj@gmx.de>"
-        ],
-        "keywords": [
-            "energy",
-            "power",
-            "surplus",
-            "pv",
-            "load-management",
-            "priority"
-        ],
-        "licenseInformation": {
-            "type": "free",
-            "license": "MIT"
-        },
-        "platform": "Javascript/Node.js",
-        "icon": "powerqueue.png",
-        "enabled": true,
-        "extIcon": "https://raw.githubusercontent.com/typhosj/ioBroker.powerqueue/main/admin/powerqueue.png",
-        "readme": "https://github.com/typhosj/ioBroker.powerqueue/blob/main/README.md",
-        "loglevel": "info",
-        "tier": 3,
-        "mode": "daemon",
-        "type": "energy",
-        "compact": true,
-        "nogit": true,
-        "connectionType": "local",
-        "dataSource": "push",
-        "adminUI": {
-            "config": "html"
-        },
-        "eraseOnUpload": true,
-        "dependencies": [
-            {
-                "js-controller": ">=6.0.11"
-            }
-        ],
-        "globalDependencies": [
-            {
-                "admin": ">=7.6.20"
-            }
-        ]
+  "common": {
+    "name": "powerqueue",
+    "version": "0.1.0",
+    "news": {
+      "0.1.0": {
+        "en": "* Runtime: inputs, evaluation loop, published plan and armed control writes.\n* Devices tab: house battery, reserve, and the full device list with order and switching\n  times.\n* \"Right now\" tab: the live plan of the running instance, in the language of the admin UI.\n* Optional availability condition per device, with the value that means \"may run\".\n* Survive a stored configuration whose empty device list comes back as an object — the\n  adapter crashed on start instead of reporting what was missing.\n* Translations for every supported language.\n* The PowerQueue icon from the chosen logo concept, instead of the scaffold placeholder.\n* Load the socket library in the configuration page, which never opened without it.\n* Ask for the momentary grid power instead of \"the meter\", and hide energy counters from\n  every power selection.\n* Confirming a sentence works again: two configuration fields changed in one click\n  overwrote each other, and on a meter whose readings are negative the confirmed sentence was\n  mapped back to the other one.\n* The guided setup opens the next step as soon as one is finished, instead of only after\n  leaving the tab and coming back.\n* A device that reports its power can hand its current reading to the configured power\n  with one click.\n* The simulation said \"drawing\" while the house was feeding in, and the budget lines now\n  say that the handed-out power is part of the free power, not on top of it.\n* Device cards fold away once a device is complete, and say in one line what they hide.\n* The availability condition explains itself instead of being labelled \"only when this is\n  set\".",
+        "de": "* Laufzeit: Eingaben, Auswertungsschleife, veröffentlichter Plan und aktivierte Steuerungsschreibvorgänge.\n* Registerkarte „Geräte“: Bordbatterie, Reservebatterie und die vollständige Geräteliste mit Reihenfolge und Umschaltung\nmal.\n* Registerkarte „Jetzt“: der Live-Plan der laufenden Instanz in der Sprache der Admin-Benutzeroberfläche.\n* Optionale Verfügbarkeitsbedingung pro Gerät, mit dem Wert, der bedeutet „kann ausgeführt werden“.\n* Eine gespeicherte Konfiguration überstehen, deren leere Geräteliste als Objekt zurückgegeben wird — die\nDer Adapter stürzte beim Start ab, anstatt zu melden, was fehlte.\n* Übersetzungen für jede unterstützte Sprache.\n* Das PowerQueue-Symbol aus dem gewählten Logo-Konzept anstelle des Platzhalters mit dem Gerüst.\n* Laden Sie die Socket-Bibliothek auf der Konfigurationsseite, die ohne sie nie geöffnet wird.\n* Fragen Sie nach dem momentanen Netzstrom anstelle des „Zählers“ und verstecken Sie Energiezähler vor\njede Leistungsauswahl.\n* Die Bestätigung eines Satzes funktioniert wieder: Zwei Konfigurationsfelder wurden mit einem Klick geändert.\nSie überschrieben sich gegenseitig, und auf einem Messgerät, dessen Messwerte negativ sind, lautete der bestätigte Satz:\nwurde auf die andere zurückgewiesen.\n* Die geführte Einrichtung öffnet den nächsten Schritt, sobald ein Schritt abgeschlossen ist, anstatt erst danach.\nIch verlasse den Tab und komme zurück.\nEin Gerät, das seinen Stromverbrauch meldet, kann seinen aktuellen Messwert an die konfigurierte Stromversorgung weitergeben.\nmit einem Klick.\n* Die Simulation zeigte „Zeichnen“ an, während das Haus Daten einspeiste, und die Budgetlinien jetzt\nMan sollte sagen, dass die verteilte Macht Teil der freien Macht ist, nicht zusätzlich dazu.\n* Die Gerätekarten lassen sich nach Fertigstellung eines Geräts einklappen und beschreiben in einer Zeile, was sich dahinter verbirgt.\n* Die Verfügbarkeitsbedingung erklärt sich von selbst, anstatt als „nur wenn dies der Fall ist“ bezeichnet zu werden.\n  Satz\".",
+        "ru": "* Время выполнения: входные данные, цикл оценки, опубликованный план и запись управляющих данных.\n* Вкладка «Устройства»: основной аккумулятор, резервный аккумулятор и полный список устройств с указанием порядка и переключения.\nраз.\n* Вкладка «Сейчас»: текущий план работы запущенного экземпляра на языке административного интерфейса.\n* Необязательное условие доступности для каждого устройства, значение которого означает «может работать».\n* Сохранять сохраненную конфигурацию, в которой пустой список устройств возвращается в виде объекта —\nАдаптер выдал ошибку при запуске, вместо того чтобы сообщить, чего не хватает.\n* Переводы для всех поддерживаемых языков.\n* Вместо шаблона в виде каркаса используется иконка PowerQueue из выбранной концепции логотипа.\n* Загрузите библиотеку сокетов на странице конфигурации, которая без неё никогда бы не открылась.\n* Запрашивайте кратковременную мощность сети вместо показаний счетчика и скрывайте счетчики энергии от пользователей.\nлюбой выбор мощности.\n* Подтверждение работоспособности предложения: изменение двух полей конфигурации одним щелчком мыши.\nОни перезаписали друг друга, и на приборе с отрицательными показаниями подтвержденный приговор был\nсопоставлено с другим.\n* В режиме пошаговой настройки следующий шаг открывается сразу после завершения предыдущего, а не только после его завершения.\nоставляю счет и возвращаюсь.\n* Устройство, сообщающее о своем энергопотреблении, может передавать показания тока на настроенный источник питания.\nодним щелчком мыши.\n* В симуляции отображалось «рисование», пока дом принимался, и теперь отображаются бюджетные строки.\nУтверждайте, что предоставленная власть является частью свободной власти, а не надстройкой над ней.\n* Карточки устройств складываются после завершения сборки устройства и в одной строке указывают, что они скрывают.\n* Условие доступности объясняется само собой, а не обозначается как «только когда это условие выполняется».\n  набор\".",
+        "pt": "* Tempo de execução: entradas, loop de avaliação, plano publicado e gravações de controle armado.\n* Aba Dispositivos: bateria da casa, bateria reserva e lista completa de dispositivos com opções de ordem e comutação.\nvezes.\n* Aba \"Agora\": o plano em tempo real da instância em execução, no idioma da interface administrativa.\n* Condição de disponibilidade opcional por dispositivo, com o valor que significa \"pode ser executado\".\n* Sobreviver a uma configuração armazenada cuja lista de dispositivos vazia retorna como um objeto — o\nO adaptador apresentou falha ao iniciar, em vez de informar o que estava faltando.\n* Traduções para todos os idiomas suportados.\n* O ícone do PowerQueue, proveniente do conceito de logotipo escolhido, substitui o ícone de andaime.\n* Carregue a biblioteca de sockets na página de configuração, que nunca abriu sem ela.\n* Solicite a potência momentânea da rede em vez do \"medidor\" e oculte os contadores de energia.\ntodas as opções de potência.\n* Confirmação de que uma frase funciona novamente: dois campos de configuração alterados com um clique\nsobrescreveram-se umas às outras, e num medidor cujas leituras são negativas, a sentença confirmada foi\nmapeado de volta para o outro.\n* A configuração guiada abre a próxima etapa assim que uma for concluída, em vez de somente depois que a anterior for finalizada.\nSair da conta e voltar.\nUm dispositivo que reporta sua potência pode fornecer sua leitura atual para a fonte de alimentação configurada.\nCom um clique.\n* A simulação indicava \"desenho\" enquanto a casa estava sendo alimentada, e as linhas orçamentárias agora\nDizer que o poder concedido faz parte do poder gratuito, e não é algo adicional a ele.\n* Os cartões de dispositivo se desdobram após a conclusão do dispositivo e indicam em uma linha o que eles escondem.\n* A condição de disponibilidade se explica por si só, em vez de ser rotulada como \"somente quando isso for\"\n  definir\".",
+        "nl": "* Uitvoeringstijd: invoer, evaluatielus, gepubliceerd plan en schrijfbewerkingen naar geactiveerde besturing.\n* Tabblad Apparaten: huishoudaccu, reserveaccu en de volledige lijst met apparaten, inclusief volgorde en schakelmogelijkheden.\nkeer.\n* Tabblad \"Nu\": het live plan van de actieve instantie, in de taal van de beheerdersinterface.\n* Optionele beschikbaarheidsvoorwaarde per apparaat, met de waarde die \"kan werken\" betekent.\n* Overleef een opgeslagen configuratie waarvan de lege apparaatlijst als object wordt geretourneerd — de\nDe adapter is bij het opstarten vastgelopen in plaats van te melden wat er ontbrak.\n* Vertalingen voor elke ondersteunde taal.\n* Het PowerQueue-pictogram uit het gekozen logo-concept, in plaats van de steiger-placeholder.\n* Laad de socketbibliotheek in de configuratiepagina, die anders nooit geopend kan worden.\n* Vraag naar het actuele netvermogen in plaats van \"de meter\" en verberg de energiemeters.\nelke vermogensselectie.\n* Bevestigen dat een zin werkt, werkt weer: twee configuratievelden zijn met één klik gewijzigd.\nZe overschreven elkaar, en op een meter waarvan de metingen negatief waren, was de bevestigde zin:\nwerd teruggekoppeld naar de andere.\n* De begeleide installatie opent de volgende stap zodra de vorige is voltooid, in plaats van pas daarna.\nHet tabblad verlaten en later terugkeren.\n* Een apparaat dat zijn vermogen meet, kan zijn huidige waarde doorgeven aan het geconfigureerde vermogen.\nmet één klik.\n* De simulatie gaf \"tekenen\" aan terwijl het huis aan het voeden was, en de budgetlijnen nu\nZeg dat de uitgedeelde macht onderdeel is van de vrije macht, en er niet bovenop komt.\n* Apparaatkaarten vouwen zich weg zodra een apparaat compleet is en geven in één regel aan wat ze verbergen.\n* De beschikbaarheidsvoorwaarde spreekt voor zich in plaats van te worden aangeduid als \"alleen wanneer dit het geval is\".\n  set\".",
+        "fr": "* Exécution : entrées, boucle d’évaluation, plan publié et écritures de contrôle armé.\nOnglet Appareils : batterie principale, batterie de secours et liste complète des appareils avec leur ordre et leur commutation.\nfois.\n* Onglet « Actuellement » : le plan en direct de l’instance en cours d’exécution, dans la langue de l’interface d’administration.\n* Condition de disponibilité optionnelle par appareil, avec la valeur signifiant « peut fonctionner ».\n* Survivre à une configuration enregistrée dont la liste de périphériques vide est renvoyée sous forme d'objet — le\nL'adaptateur a planté au démarrage au lieu de signaler les éléments manquants.\n* Traductions disponibles dans toutes les langues prises en charge.\n* L'icône PowerQueue du concept de logo choisi, au lieu de l'élément de remplissage.\n* Charger la bibliothèque de sockets dans la page de configuration, qui ne s'ouvrait jamais sans elle.\nDemandez la puissance instantanée du réseau plutôt que « le compteur » et masquez les compteurs d'énergie.\nchaque sélection de puissance.\n* Confirmer qu'une phrase fonctionne à nouveau : deux champs de configuration modifiés en un seul clic\nse sont écrasées l'une l'autre, et sur un compteur dont les lectures sont négatives, la phrase confirmée était\nrenvoyé à l'autre.\n* La configuration guidée ouvre l'étape suivante dès que la précédente est terminée, et non plus seulement après\nquitter l'onglet et y revenir.\nUn appareil qui mesure sa consommation électrique peut transmettre sa mesure actuelle à l'alimentation configurée.\nen un seul clic.\nLa simulation affichait « dessin » pendant que la maison était alimentée, et les lignes budgétaires maintenant\nAffirmez que le pouvoir distribué fait partie intégrante du pouvoir gratuit, et ne s'y ajoute pas.\n* Les fiches d'identification des appareils se replient une fois l'appareil terminé et indiquent en une seule ligne ce qu'elles contiennent.\nLa condition de disponibilité est explicite, sans avoir à préciser « uniquement lorsque ceci est… ».\n  ensemble\".",
+        "it": "* Tempo di esecuzione: input, ciclo di valutazione, piano pubblicato e scritture di controllo attive.\n* Scheda Dispositivi: batteria di servizio, batteria di riserva e elenco completo dei dispositivi con ordine e modalità di commutazione\nvolte.\n* Scheda \"In questo momento\": il piano in tempo reale dell'istanza in esecuzione, nella lingua dell'interfaccia utente di amministrazione.\n* Condizione di disponibilità facoltativa per dispositivo, con il valore che significa \"può essere eseguito\".\n* Sopravvivere a una configurazione memorizzata il cui elenco di dispositivi vuoto viene restituito come oggetto — il\nL'adattatore si è bloccato all'avvio invece di segnalare gli elementi mancanti.\n* Traduzioni per tutte le lingue supportate.\n* L'icona PowerQueue del logo scelto, al posto del segnaposto a forma di impalcatura.\n* Carica la libreria socket nella pagina di configurazione, che non si apriva mai senza di essa.\n* Richiedi la potenza istantanea della rete invece del \"contatore\" e nascondi i contatori di energia\nogni selezione di potenza.\n* Confermare una frase funziona di nuovo: due campi di configurazione modificati con un clic\nsi sovrascrivevano a vicenda e su un misuratore le cui letture sono negative la sentenza confermata era\nmappato di nuovo all'altro.\n* La configurazione guidata apre il passaggio successivo non appena uno è terminato, invece che solo dopo\nChiudendo la scheda e tornandoci in seguito.\n* Un dispositivo che segnala la sua potenza può trasmettere la sua lettura corrente alla potenza configurata\ncon un solo clic.\n* La simulazione diceva \"disegno\" mentre la casa stava alimentando e le linee di bilancio ora\naffermano che il potere concesso fa parte del potere gratuito, non si aggiunge ad esso.\n* Le schede dei dispositivi si ripiegano una volta completato il dispositivo e indicano su una riga cosa nascondono.\n* La condizione di disponibilità si spiega da sola invece di essere etichettata \"solo quando questo è\n  impostato\".",
+        "es": "* Tiempo de ejecución: entradas, bucle de evaluación, plan publicado y escrituras de control armado.\n* Pestaña Dispositivos: batería de servicio, reserva y la lista completa de dispositivos con orden y conmutación.\ntiempos.\n* Pestaña \"Ahora mismo\": el plan en tiempo real de la instancia en ejecución, en el idioma de la interfaz de administración.\n* Condición de disponibilidad opcional por dispositivo, con el valor que significa \"puede ejecutarse\".\n* Sobrevivir a una configuración almacenada cuya lista de dispositivos vacía se devuelve como un objeto:\nEl adaptador falló al iniciarse en lugar de informar qué faltaba.\n* Traducciones para todos los idiomas compatibles.\n* El icono de PowerQueue del concepto de logotipo elegido, en lugar del marcador de posición de andamio.\n* Cargar la biblioteca de sockets en la página de configuración, que nunca se abre sin ella.\n* Solicite la energía de la red momentánea en lugar de \"el medidor\" y oculte los contadores de energía.\ncada selección de energía.\n* Confirmar una frase vuelve a funcionar: dos campos de configuración se modificaron con un solo clic.\nse sobrescribieron mutuamente, y en un medidor cuyas lecturas son negativas la sentencia confirmada fue\nmapeado de vuelta al otro.\n* La configuración guiada abre el siguiente paso tan pronto como se termina uno, en lugar de solo después\nsalir de la pestaña y volver.\n* Un dispositivo que informa su potencia puede entregar su lectura actual a la potencia configurada.\ncon un solo clic.\n* La simulación decía \"dibujando\" mientras la casa estaba alimentando, y las líneas del presupuesto ahora\nHay que decir que el poder otorgado forma parte del poder gratuito, no se añade a él.\n* Las tarjetas de los dispositivos se pliegan una vez que el dispositivo está completo e indican en una sola línea lo que ocultan.\n* La condición de disponibilidad se explica por sí misma en lugar de estar etiquetada como \"solo cuando esto sea\n  colocar\".",
+        "pl": "* Czas wykonania: dane wejściowe, pętla ewaluacyjna, opublikowany plan i uzbrojone zapisy sterujące.\n* Karta Urządzenia: bateria domowa, rezerwa i pełna lista urządzeń z kolejnością i przełączaniem\nrazy.\n* Karta „Aktualnie”: plan działania instancji na żywo w języku interfejsu administratora.\n* Opcjonalny warunek dostępności dla każdego urządzenia, którego wartość oznacza „może działać”.\n* Przetrwanie zapisanej konfiguracji, której pusta lista urządzeń powraca jako obiekt —\nAdapter uległ awarii podczas uruchamiania zamiast zgłosić, czego brakuje.\n* Tłumaczenia na każdy obsługiwany język.\n* Ikona PowerQueue z wybranego konceptu logo, zamiast symbolu zastępczego rusztowania.\n* Załaduj bibliotekę gniazda na stronie konfiguracji, która nigdy nie została otwarta bez niej.\n* Poproś o chwilową moc sieciową zamiast „licznika” i ukryj liczniki energii\nkażdy wybór mocy.\n* Potwierdzanie zdania działa ponownie: dwa pola konfiguracyjne zmienione jednym kliknięciem\nnadpisywały się wzajemnie, a na liczniku, którego wskazania są ujemne, potwierdzono zdanie\nzmapowane z powrotem na drugi.\n* W trybie konfiguracji z przewodnikiem następny krok zostanie otwarty zaraz po jego zakończeniu, a nie dopiero po\nopuszczanie zakładki i powrót.\n* Urządzenie, które raportuje swoją moc, może przekazać aktualny odczyt do skonfigurowanego urządzenia do pomiaru mocy.\njednym kliknięciem.\n* Symulacja mówiła „rysowanie”, gdy dom był zasilany, a linie budżetowe teraz\npowiedzieć, że przekazana moc jest częścią wolnej mocy, a nie czymś dodatkowym.\n* Karty urządzeń składają się po ukończeniu urządzenia i w jednym wierszu opisują, co ukrywają.\n* Warunek dostępności wyjaśnia się sam, zamiast być oznaczony etykietą „tylko wtedy, gdy to jest\n  ustawić\".",
+        "uk": "* Виконання: вхідні дані, цикл оцінювання, опублікований план та записи з озброєним керуванням.\n* Вкладка «Пристрої»: домашній акумулятор, резервний та повний список пристроїв з порядком та перемиканням\nрази.\n* Вкладка «Зараз»: активний план запущеного екземпляра мовою інтерфейсу адміністратора.\n* Необов’язкова умова доступності для кожного пристрою зі значенням, яке означає «може працювати».\n* Пережити збережену конфігурацію, порожній список пристроїв якої повертається як об'єкт —\nАдаптер аварійно завершив роботу під час запуску, замість того, щоб повідомляти про відсутнє.\n* Переклади для кожної підтримуваної мови.\n* Піктограма PowerQueue з обраної концепції логотипу, замість заповнювача scaffold.\n* Завантажте бібліотеку сокетів на сторінці конфігурації, яка ніколи не відкривалася без неї.\n* Запитуйте про миттєву потужність мережі замість «лічильника» та приховуйте лічильники енергії від\nкожен вибір потужності.\n* Підтвердження речення знову працює: два поля конфігурації змінюються одним кліком\nперезаписували один одного, і на лічильнику, показання якого негативні, підтверджене речення було\nзіставлено назад з іншим.\n* Кероване налаштування відкриває наступний крок одразу після завершення попереднього, а не лише після\nзалишаючи вкладку та повертаючись.\n* Пристрій, який повідомляє про свою потужність, може передавати свої поточні показники налаштованому приладу живлення\nодним клацанням миші.\n* У симуляції було написано «малювання», поки будинок живився, а бюджетні рядки тепер\nскажіть, що роздана влада є частиною безкоштовної влади, а не на її вершині.\n* Картки пристроїв складаються після завершення роботи з пристроєм та одним рядком описують, що вони приховують.\n* Умова доступності пояснюється сама собою, а не позначена як «лише тоді, коли це\nнабір\".",
+        "zh-cn": "* 运行时：输入、评估循环、已发布的计划和武装控制写入。\n* 设备选项卡：包括家用电池、备用电池以及包含顺序和切换功能的完整设备列表。\n次数。\n* “当前”选项卡：以管理员界面语言显示的正在运行实例的实时计划。\n* 每个设备的可选可用性条件，其值为“可能运行”。\n* 能够应对存储的配置，即使该配置中的设备列表为空，并以对象的形式返回——\n适配器在启动时崩溃，而不是报告缺失的内容。\n* 支持所有语言的翻译。\n* 使用选定的徽标概念中的 PowerQueue 图标，而不是脚手架占位符。\n* 在配置页面中加载套接字库，如果没有该库，该页面将无法打开。\n* 询问瞬时电网功率，而不是“电表”功率，并将能量计数器隐藏起来。\n每次功率选择。\n* 确认语句功能再次生效：一次点击即可更改两个配置字段\n相互覆盖，在读数为负值的仪表上，确认的句子是\n映射回另一个。\n* 引导式设置会在完成一个步骤后立即打开下一步，而不是在完成一个步骤后才打开。\n离开标签页再回来。\n* 能够报告自身功率的设备可以将其当前功率读数传递给配置的电源\n只需点击一下。\n* 模拟显示“绘制”，同时房屋正在接收数据，预算线现在显示为“绘制”。\n要说，被赋予的权力是自由权力的一部分，而不是凌驾于自由权力之上的。\n* 设备卡片在设备完成后可以折叠收起，并用一句话说明它们隐藏了什么。\n* 可用性条件本身就说明了一切，无需标注“仅当……时”\n  放”。"
+      },
+      "0.0.1": {
+        "en": "initial release",
+        "de": "Erstveröffentlichung",
+        "ru": "Начальная версия",
+        "pt": "lançamento inicial",
+        "nl": "Eerste uitgave",
+        "fr": "Première version",
+        "it": "Versione iniziale",
+        "es": "Versión inicial",
+        "pl": "Pierwsze wydanie",
+        "uk": "Початкова версія",
+        "zh-cn": "首次出版"
+      }
     },
-    "native": {
-        "mode": "observe",
-        "gridPowerId": "",
-        "gridImportPositive": true,
-        "gridConfirmed": false,
-        "batteryPowerId": "",
-        "batteryChargePositive": true,
-        "batteryConfirmed": false,
-        "batterySocId": "",
-        "minBatterySoc": null,
-        "reserveW": 200,
-        "maxAgeSeconds": 300,
-        "smoothingSeconds": 60,
-        "consumers": []
+    "titleLang": {
+      "en": "PowerQueue",
+      "de": "PowerQueue",
+      "ru": "PowerQueue",
+      "pt": "PowerQueue",
+      "nl": "PowerQueue",
+      "fr": "PowerQueue",
+      "it": "PowerQueue",
+      "es": "Cola de energía",
+      "pl": "Kolejka mocy",
+      "uk": "PowerQueue",
+      "zh-cn": "电源队列"
     },
-    "objects": [],
-    "instanceObjects": [
-        {
-            "_id": "info",
-            "type": "channel",
-            "common": {
-                "name": "Information"
-            },
-            "native": {}
-        },
-        {
-            "_id": "info.connection",
-            "type": "state",
-            "common": {
-                "role": "indicator.connected",
-                "name": "Device or service connected",
-                "type": "boolean",
-                "read": true,
-                "write": false,
-                "def": false
-            },
-            "native": {}
-        }
+    "desc": {
+      "en": "Distributes an available electrical power budget among prioritized, flexible consumers",
+      "de": "Verteilt ein verfügbares Strombudget auf priorisierte, flexible Verbraucher",
+      "ru": "Распределяет доступный бюджет электроэнергии между приоритетными и гибкими потребителями.",
+      "pt": "Distribui um orçamento de energia elétrica disponível entre consumidores flexíveis e priorizados",
+      "nl": "Verdeelt een beschikbaar elektriciteitsbudget onder geprioriteerde, flexibele consumenten",
+      "fr": "Distribue un budget d’énergie électrique disponible entre des consommateurs flexibles et prioritaires",
+      "it": "Distribuisce il budget di energia elettrica disponibile tra consumatori flessibili e prioritari",
+      "es": "Distribuye un presupuesto de energía eléctrica disponible entre consumidores flexibles y priorizados.",
+      "pl": "Rozdziela dostępny budżet energii elektrycznej wśród priorytetowych, elastycznych odbiorców",
+      "uk": "Розподіляє доступний бюджет електроенергії між пріоритетними гнучкими споживачами",
+      "zh-cn": "在优先、灵活的消费者之间分配可用电力预算"
+    },
+    "authors": [
+      "typhosj <typhosj@gmx.de>"
+    ],
+    "keywords": [
+      "energy",
+      "power",
+      "surplus",
+      "pv",
+      "load-management",
+      "priority"
+    ],
+    "licenseInformation": {
+      "type": "free",
+      "license": "MIT"
+    },
+    "platform": "Javascript/Node.js",
+    "icon": "powerqueue.png",
+    "enabled": true,
+    "extIcon": "https://raw.githubusercontent.com/typhosj/ioBroker.powerqueue/main/admin/powerqueue.png",
+    "readme": "https://github.com/typhosj/ioBroker.powerqueue/blob/main/README.md",
+    "loglevel": "info",
+    "tier": 3,
+    "mode": "daemon",
+    "type": "energy",
+    "compact": true,
+    "nogit": true,
+    "connectionType": "local",
+    "dataSource": "push",
+    "adminUI": {
+      "config": "html"
+    },
+    "eraseOnUpload": true,
+    "dependencies": [
+      {
+        "js-controller": ">=6.0.11"
+      }
+    ],
+    "globalDependencies": [
+      {
+        "admin": ">=7.6.20"
+      }
     ]
+  },
+  "native": {
+    "mode": "observe",
+    "gridPowerId": "",
+    "gridImportPositive": true,
+    "gridConfirmed": false,
+    "batteryPowerId": "",
+    "batteryChargePositive": true,
+    "batteryConfirmed": false,
+    "batterySocId": "",
+    "minBatterySoc": null,
+    "reserveW": 200,
+    "maxAgeSeconds": 300,
+    "smoothingSeconds": 60,
+    "consumers": []
+  },
+  "objects": [],
+  "instanceObjects": [
+    {
+      "_id": "info",
+      "type": "channel",
+      "common": {
+        "name": "Information"
+      },
+      "native": {}
+    },
+    {
+      "_id": "info.connection",
+      "type": "state",
+      "common": {
+        "role": "indicator.connected",
+        "name": "Device or service connected",
+        "type": "boolean",
+        "read": true,
+        "write": false,
+        "def": false
+      },
+      "native": {}
+    }
+  ]
 }

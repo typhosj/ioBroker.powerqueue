@@ -99,8 +99,7 @@ npm test
 ## Changelog
 
 <!-- Add changes for the next release here; the release script turns this into a version entry. -->
-
-### **WORK IN PROGRESS**
+### 0.1.0 (2026-08-13)
 
 - (typhosj) Runtime: inputs, evaluation loop, published plan and armed control writes.
 - (typhosj) Devices tab: house battery, reserve, and the full device list with order and switching

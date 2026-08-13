@@ -1,6 +1,6 @@
 {
   "name": "iobroker.powerqueue",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Distributes an available electrical power budget among prioritized, flexible consumers",
   "author": {
     "name": "typhosj",
