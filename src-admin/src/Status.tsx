@@ -1,0 +1,164 @@
+/**
+ * What PowerQueue is doing right now, read from the states the running adapter publishes.
+ *
+ * Nothing here decides anything: the simulation shows what would happen, this tab shows what did.
+ * Only the stable reason codes are read, never the published English sentences, so the explanation
+ * appears in the language of the admin UI.
+ */
+
+import { I18n, InfoBox } from '@iobroker/adapter-react-v5';
+import type { AdminConnection } from '@iobroker/socket-client';
+import { Box, Table, TableBody, TableCell, TableHead, TableRow, Typography } from '@mui/material';
+import React from 'react';
+
+import type { NativeConfig } from '../../src/lib/config';
+import { CONSUMER_REASON_TEXT, CONSUMER_STATE_TEXT, PLAN_REASON_TEXT } from '../../src/lib/reasons';
+import type { ConsumerState, ReasonCode } from '../../src/lib/types';
+import { duration, watt } from './Simulation';
+
+/** What the table needs per device, and what the header needs on top. */
+const CONSUMER_FIELDS = ['state', 'reason', 'proposedPowerW', 'runtimeTodayS'] as const;
+const BUDGET_FIELDS = ['surplusW', 'availableW', 'allocatedW', 'remainingW'] as const;
+
+type Values = Record<string, ioBroker.StateValue>;
+
+/**
+ * Subscribe to a fixed list of states for as long as the tab is open.
+ *
+ * @param socket - the admin connection
+ * @param ids - the object IDs to watch
+ * @returns the current value per ID
+ */
+function useStates(socket: AdminConnection, ids: string[]): Values {
+    const [values, setValues] = React.useState<Values>({});
+    // The effect depends on the contents of the list, not on the array identity a render creates.
+    const joined = ids.join(',');
+
+    React.useEffect(() => {
+        const watched = joined ? joined.split(',') : [];
+        const handler = (id: string, state: ioBroker.State | null | undefined): void => {
+            setValues(previous => ({ ...previous, [id]: state ? state.val : null }));
+        };
+
+        for (const id of watched) {
+            void socket.getState(id).then(state => handler(id, state));
+            void socket.subscribeState(id, handler);
+        }
+        return () => {
+            for (const id of watched) {
+                socket.unsubscribeState(id, handler);
+            }
+        };
+    }, [socket, joined]);
+
+    return values;
+}
+
+/**
+ * @param value - a state value
+ * @returns the number it holds, or 0 when it holds none
+ */
+function number(value: ioBroker.StateValue): number {
+    return typeof value === 'number' ? value : 0;
+}
+
+interface StatusProps {
+    native: NativeConfig;
+    socket: AdminConnection;
+    /** `powerqueue.<instance>` — the namespace whose states are read. */
+    namespace: string;
+}
+
+/**
+ * @param props - configuration, connection and the instance namespace
+ * @returns the live status tab
+ */
+export function Status(props: StatusProps): React.JSX.Element {
+    const { namespace, native } = props;
+
+    const ids = [
+        `system.adapter.${namespace}.alive`,
+        `${namespace}.plan.valid`,
+        `${namespace}.plan.reason`,
+        ...BUDGET_FIELDS.map(field => `${namespace}.budget.${field}`),
+        ...native.consumers.flatMap(consumer =>
+            CONSUMER_FIELDS.map(field => `${namespace}.consumers.${consumer.key}.${field}`),
+        ),
+    ];
+    const values = useStates(props.socket, ids);
+
+    if (values[`system.adapter.${namespace}.alive`] !== true) {
+        return (
+            <Box sx={{ p: 2 }}>
+                <InfoBox type="info">
+                    {I18n.t('PowerQueue is not running, so there is nothing to report. Start the instance first.')}
+                </InfoBox>
+            </Box>
+        );
+    }
+
+    const reason = (values[`${namespace}.plan.reason`] as ReasonCode) ?? 'ok';
+    const budget = Object.fromEntries(
+        BUDGET_FIELDS.map(field => [field, number(values[`${namespace}.budget.${field}`])]),
+    ) as Record<(typeof BUDGET_FIELDS)[number], number>;
+
+    return (
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, p: 2, overflow: 'auto' }}>
+            <Typography variant="body1">{I18n.t(PLAN_REASON_TEXT[reason] ?? PLAN_REASON_TEXT.ok)}</Typography>
+
+            <Box>
+                <Typography variant="body1">
+                    {budget.surplusW > 0
+                        ? I18n.t('The house is feeding %s into the grid.', watt(budget.surplusW))
+                        : I18n.t('The house is drawing %s from the grid.', watt(-budget.surplusW))}
+                </Typography>
+                <Typography variant="body1">
+                    {I18n.t(
+                        'Free for flexible devices: %s. Already handed out: %s. Still free: %s.',
+                        watt(budget.availableW),
+                        watt(budget.allocatedW),
+                        watt(budget.remainingW),
+                    )}
+                </Typography>
+            </Box>
+
+            {native.consumers.length === 0 ? (
+                <Typography variant="body2">{I18n.t('No device is configured yet.')}</Typography>
+            ) : (
+                <Table size="small">
+                    <TableHead>
+                        <TableRow>
+                            <TableCell>{I18n.t('Device')}</TableCell>
+                            <TableCell>{I18n.t('Status')}</TableCell>
+                            <TableCell align="right">{I18n.t('Power')}</TableCell>
+                            <TableCell align="right">{I18n.t('Today')}</TableCell>
+                            <TableCell>{I18n.t('Why')}</TableCell>
+                        </TableRow>
+                    </TableHead>
+                    <TableBody>
+                        {[...native.consumers]
+                            .sort((a, b) => a.priority - b.priority || (a.key < b.key ? -1 : 1))
+                            .map(consumer => {
+                                const base = `${namespace}.consumers.${consumer.key}`;
+                                const state = values[`${base}.state`] as ConsumerState | undefined;
+                                const why = values[`${base}.reason`] as ReasonCode | undefined;
+                                return (
+                                    <TableRow key={consumer.key}>
+                                        <TableCell>{consumer.name || consumer.key}</TableCell>
+                                        <TableCell>{state ? I18n.t(CONSUMER_STATE_TEXT[state]) : '—'}</TableCell>
+                                        <TableCell align="right">
+                                            {watt(number(values[`${base}.proposedPowerW`]))}
+                                        </TableCell>
+                                        <TableCell align="right">
+                                            {duration(number(values[`${base}.runtimeTodayS`]))}
+                                        </TableCell>
+                                        <TableCell>{why ? I18n.t(CONSUMER_REASON_TEXT[why]) : ''}</TableCell>
+                                    </TableRow>
+                                );
+                            })}
+                    </TableBody>
+                </Table>
+            )}
+        </Box>
+    );
+}

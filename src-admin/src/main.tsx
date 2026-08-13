@@ -14,6 +14,7 @@ import { validateNative, type NativeConfig } from '../../src/lib/config';
 import { Devices } from './Devices';
 import { FirstRun } from './FirstRun';
 import { Simulation } from './Simulation';
+import { Status } from './Status';
 
 // admin/i18n/<lang>.json is the single translation source (managed by `npm run translate`).
 // Globbing them keeps this list from drifting when a language is added.
@@ -89,6 +90,7 @@ class App extends GenericApp<GenericAppProps, AppState> {
                     value={this.state.tab}
                 >
                     <Tab label={I18n.t('Setup')} />
+                    <Tab label={I18n.t('Right now')} />
                     <Tab label={I18n.t('Devices')} />
                     <Tab label={I18n.t('Simulation')} />
                 </Tabs>
@@ -100,6 +102,12 @@ class App extends GenericApp<GenericAppProps, AppState> {
                         theme={{ theme: this.state.theme, themeType: this.state.themeType }}
                     />
                 ) : this.state.tab === 1 ? (
+                    <Status
+                        namespace={`${this.adapterName}.${this.instance}`}
+                        native={native}
+                        socket={this.socket}
+                    />
+                ) : this.state.tab === 2 ? (
                     <Devices
                         native={native}
                         onChange={(attr, value) => this.updateNativeValue(attr, value)}

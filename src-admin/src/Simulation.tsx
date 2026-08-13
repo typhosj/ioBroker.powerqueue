@@ -23,7 +23,7 @@ function clock(ts: number): string {
  * @param watts - power in watts
  * @returns the value rounded to whole watts, with its unit
  */
-function watt(watts: number): string {
+export function watt(watts: number): string {
     return `${Math.round(watts)} W`;
 }
 
@@ -31,7 +31,7 @@ function watt(watts: number): string {
  * @param seconds - a duration
  * @returns the duration in hours and minutes
  */
-function duration(seconds: number): string {
+export function duration(seconds: number): string {
     const minutes = Math.round(seconds / 60);
     return minutes >= 60 ? `${Math.floor(minutes / 60)} h ${minutes % 60} min` : `${minutes} min`;
 }
