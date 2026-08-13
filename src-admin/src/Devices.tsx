@@ -288,6 +288,43 @@ export function Devices(props: DevicesProps): React.JSX.Element {
                             value={consumer.feedbackId}
                         />
 
+                        <SelectStateButton
+                            filterFunc={obj => obj.common?.type === 'boolean' || obj.common?.type === 'number'}
+                            label={I18n.t('Only when this is set (optional)')}
+                            onSelect={id => update(consumer.key, { availabilityId: id })}
+                            socket={props.socket}
+                            theme={props.theme}
+                            value={consumer.availabilityId ?? ''}
+                        />
+                        {consumer.availabilityId ? (
+                            <Box sx={{ pl: 1 }}>
+                                <RadioGroup
+                                    onChange={event =>
+                                        update(consumer.key, { availableWhen: event.target.value === 'on' })
+                                    }
+                                    value={(consumer.availableWhen ?? true) ? 'on' : 'off'}
+                                >
+                                    <FormControlLabel
+                                        control={<Radio />}
+                                        label={I18n.t('%s may run while that state is on.', consumer.name || '')}
+                                        value="on"
+                                    />
+                                    <FormControlLabel
+                                        control={<Radio />}
+                                        label={I18n.t('%s may run while that state is off.', consumer.name || '')}
+                                        value="off"
+                                    />
+                                </RadioGroup>
+                                <Button
+                                    color="inherit"
+                                    onClick={() => update(consumer.key, { availabilityId: '' })}
+                                    size="small"
+                                >
+                                    {I18n.t('Always allow it')}
+                                </Button>
+                            </Box>
+                        ) : null}
+
                         <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
                             <TextField
                                 label={I18n.t('Power consumption (W)')}

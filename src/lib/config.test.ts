@@ -60,6 +60,12 @@ describe('validateNative', () => {
         ]);
     });
 
+    it('checks the availability condition only when one is configured', () => {
+        const consumer = { ...usable().consumers[0], availabilityId: 'javascript.0.*' };
+        expect(fields(usable({ consumers: [{ ...consumer, availabilityId: '' }] }))).to.deep.equal([]);
+        expect(fields(usable({ consumers: [consumer] }))).to.deep.equal(['consumers']);
+    });
+
     it('names the device in every consumer problem', () => {
         const problems = validateNative(usable({ consumers: [{ ...DEFAULT_CONSUMER, key: 'c1', name: 'Pool pump' }] }));
         expect(problems.map(problem => problem.consumerKey)).to.deep.equal(['c1', 'c1']);
@@ -135,8 +141,14 @@ describe('subscribedIds', () => {
             batteryPowerId: 'goodwe.0.battery.power',
             batteryConfirmed: true,
             consumers: [
-                { ...DEFAULT_CONSUMER, key: 'a', targetId: 'shelly.0.pump', feedbackId: 'shelly.0.pump.power' },
-                { ...DEFAULT_CONSUMER, key: 'b', targetId: 'shelly.0.pump', feedbackId: '' },
+                {
+                    ...DEFAULT_CONSUMER,
+                    key: 'a',
+                    targetId: 'shelly.0.pump',
+                    feedbackId: 'shelly.0.pump.power',
+                    availabilityId: 'javascript.0.holiday',
+                },
+                { ...DEFAULT_CONSUMER, key: 'b', targetId: 'shelly.0.pump', feedbackId: '', availabilityId: '' },
             ],
         });
         expect(subscribedIds(native)).to.deep.equal([
@@ -144,6 +156,7 @@ describe('subscribedIds', () => {
             'goodwe.0.battery.power',
             'shelly.0.pump',
             'shelly.0.pump.power',
+            'javascript.0.holiday',
         ]);
     });
 });

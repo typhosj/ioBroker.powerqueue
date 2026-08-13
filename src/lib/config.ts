@@ -17,6 +17,13 @@ export interface NativeConsumer {
     targetId: string;
     /** Optional measured power of the consumer. Empty when the device does not report it. */
     feedbackId: string;
+    /**
+     * Optional condition that has to hold before the device may run at all — a door contact, a
+     * holiday switch, a "the car is plugged in" state. Missing means the device is always usable.
+     */
+    availabilityId?: string;
+    /** Which value of {@link NativeConsumer.availabilityId} means "may run". Defaults to `true`. */
+    availableWhen?: boolean;
     nominalPowerW: number;
     minOnMinutes: number;
     minOffMinutes: number;
@@ -68,6 +75,8 @@ export const DEFAULT_CONSUMER: Omit<NativeConsumer, 'key'> = {
     name: '',
     targetId: '',
     feedbackId: '',
+    availabilityId: '',
+    availableWhen: true,
     nominalPowerW: 0,
     minOnMinutes: 10,
     minOffMinutes: 10,
@@ -176,6 +185,9 @@ export function validateNative(native: NativeConfig): ConfigProblem[] {
         if (consumer.feedbackId && !isValidId(consumer.feedbackId)) {
             problems.push({ ...where, message: 'The measured power state of "%s" is not usable.' });
         }
+        if (consumer.availabilityId && !isValidId(consumer.availabilityId)) {
+            problems.push({ ...where, message: 'The state that says when "%s" may run is not usable.' });
+        }
         if (!(consumer.nominalPowerW > 0)) {
             problems.push({ ...where, message: 'PowerQueue needs to know how much power "%s" uses.' });
         }
@@ -235,7 +247,7 @@ export function toDomainConfig(native: NativeConfig): Config {
 export function subscribedIds(native: NativeConfig): string[] {
     const ids = [native.gridPowerId, native.batteryPowerId, native.batterySocId];
     for (const consumer of native.consumers) {
-        ids.push(consumer.targetId, consumer.feedbackId);
+        ids.push(consumer.targetId, consumer.feedbackId, consumer.availabilityId ?? '');
     }
     return [...new Set(ids.filter(isValidId))];
 }

@@ -81,6 +81,8 @@ class Powerqueue extends utils.Adapter {
     private batterySoc: Sample | null = null;
     /** Measured power per consumer key, for the consumers that report it. */
     private readonly feedback = new Map<string, Sample>();
+    /** Availability per consumer key, for the consumers that have a condition configured. */
+    private readonly availability = new Map<string, boolean>();
 
     private runtime: Runtime = {};
     private lastEvaluation: number | null = null;
@@ -234,12 +236,14 @@ class Powerqueue extends utils.Adapter {
             this.batterySoc = sampleOf(await this.getForeignStateAsync(this.native.batterySocId));
         }
         for (const consumer of this.native.consumers) {
-            if (!consumer.feedbackId) {
-                continue;
+            if (consumer.feedbackId) {
+                const feedback = sampleOf(await this.getForeignStateAsync(consumer.feedbackId));
+                if (feedback) {
+                    this.feedback.set(consumer.key, feedback);
+                }
             }
-            const feedback = sampleOf(await this.getForeignStateAsync(consumer.feedbackId));
-            if (feedback) {
-                this.feedback.set(consumer.key, feedback);
+            if (consumer.availabilityId) {
+                this.noteAvailability(consumer, await this.getForeignStateAsync(consumer.availabilityId));
             }
         }
     }
@@ -270,10 +274,27 @@ class Powerqueue extends utils.Adapter {
             if (consumer.feedbackId === id && sample) {
                 this.feedback.set(consumer.key, sample);
             }
+            if (consumer.availabilityId === id) {
+                this.noteAvailability(consumer, state);
+            }
             if (consumer.targetId === id) {
                 this.noteExternalWrite(consumer, state);
             }
         }
+    }
+
+    /**
+     * @param consumer - the consumer whose condition was read
+     * @param state - the state of the condition, `null` when it could not be read
+     */
+    private noteAvailability(consumer: NativeConsumer, state: ioBroker.State | null | undefined): void {
+        // An unreadable condition means the device stays out of the plan: a condition the user
+        // configured is a reason not to run, not a formality to skip when it is missing.
+        const available =
+            state?.val === null || state?.val === undefined
+                ? false
+                : Boolean(state.val) === (consumer.availableWhen ?? true);
+        this.availability.set(consumer.key, available);
     }
 
     /**
@@ -338,9 +359,8 @@ class Powerqueue extends utils.Adapter {
             const feedback = this.feedback.get(consumer.key);
             const usable = feedback && now - feedback.ts <= this.domain.energy.maxAgeMs;
             consumers[consumer.key] = {
-                // Availability conditions are not configurable yet, so every configured device counts
-                // as available and the state machine has one input less to fault on.
-                available: true,
+                // Without a configured condition a device is always usable.
+                available: consumer.availabilityId ? (this.availability.get(consumer.key) ?? false) : true,
                 actualPowerW: usable ? feedback.value : null,
             };
         }

@@ -95,6 +95,7 @@ npm test
 - (typhosj) Devices tab: house battery, reserve, and the full device list with order and switching
   times.
 - (typhosj) "Right now" tab: the live plan of the running instance, in the language of the admin UI.
+- (typhosj) Optional availability condition per device, with the value that means "may run".
 
 ### 0.0.1 (2026-08-07)
 
