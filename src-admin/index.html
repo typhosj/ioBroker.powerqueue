@@ -7,6 +7,22 @@
         <!-- Resolved at runtime next to the built index.html, where the adapter icon already lives. -->
         <link href="powerqueue.png" rel="icon" type="image/png" />
         <link href="../../css/adapter.css" rel="stylesheet" type="text/css" />
+        <script>
+            // The admin serves socket.io two levels above this page. It has to be injected at
+            // runtime: a build step would try to resolve the file, which only exists on the server.
+            // `registerSocketOnLoad` is what @iobroker/socket-client waits for instead of polling.
+            window.registerSocketOnLoad = function (callback) {
+                window.socketLoadedHandler = callback;
+            };
+            var socketScript = document.createElement('script');
+            socketScript.onload = function () {
+                if (typeof window.socketLoadedHandler === 'function') {
+                    window.socketLoadedHandler();
+                }
+            };
+            socketScript.src = '../../lib/js/socket.io.js';
+            document.head.appendChild(socketScript);
+        </script>
     </head>
     <body>
         <div id="root"></div>

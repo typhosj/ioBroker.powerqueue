@@ -14,9 +14,11 @@ export default defineConfig({
         assetsDir: 'assets',
         rollupOptions: {
             output: {
-                entryFileNames: 'assets/[name].js',
-                chunkFileNames: 'assets/[name].js',
-                assetFileNames: 'assets/[name][extname]',
+                // Hashed names on purpose: without them every release serves `assets/index.js`
+                // again, and browsers keep showing the previous build after an update.
+                entryFileNames: 'assets/[name]-[hash].js',
+                chunkFileNames: 'assets/[name]-[hash].js',
+                assetFileNames: 'assets/[name]-[hash][extname]',
             },
         },
     },
