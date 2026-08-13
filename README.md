@@ -108,7 +108,7 @@ npm test
 - (typhosj) Survive a stored configuration whose empty device list comes back as an object — the
   adapter crashed on start instead of reporting what was missing.
 - (typhosj) Translations for every supported language.
-- (typhosj) The real PowerQueue icon instead of the scaffold placeholder, drawn as flat SVG paths.
+- (typhosj) The PowerQueue icon from the chosen logo concept, instead of the scaffold placeholder.
 
 ### 0.0.1 (2026-08-07)
 
