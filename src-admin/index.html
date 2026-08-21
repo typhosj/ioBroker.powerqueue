@@ -7,6 +7,18 @@
         <!-- Resolved at runtime next to the built index.html, where the adapter icon already lives. -->
         <link href="powerqueue.png" rel="icon" type="image/png" />
         <link href="../../css/adapter.css" rel="stylesheet" type="text/css" />
+        <style>
+            /* The configuration page is an iframe of a fixed height. Without a height of their own
+               these four have the height of their content, and then nothing inside them can scroll:
+               everything below the fold is simply unreachable. */
+            html,
+            body,
+            #root,
+            .App {
+                height: 100%;
+                margin: 0;
+            }
+        </style>
         <script>
             // The admin serves socket.io two levels above this page. It has to be injected at
             // runtime: a build step would try to resolve the file, which only exists on the server.

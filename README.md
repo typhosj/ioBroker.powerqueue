@@ -113,6 +113,8 @@ npm test
   nominal value.
 - (typhosj) `stats.plannedTodayWh` counts what the plans of the day add up to, so watching alone
   already answers whether PowerQueue would be worth switching on.
+- (typhosj) The configuration page scrolls again. Nothing in it had a height of its own, so every
+  tab ended at the lower edge of the frame — the button that adds a device was below it.
 
 ### 0.1.0 (2026-08-13)
 

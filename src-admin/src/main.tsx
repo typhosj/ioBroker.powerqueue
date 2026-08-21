@@ -118,29 +118,34 @@ class App extends GenericApp<GenericAppProps, AppState> {
                     <Tab label={I18n.t('Devices')} />
                     <Tab label={I18n.t('Simulation')} />
                 </Tabs>
-                {this.state.tab === 0 ? (
-                    <FirstRun
-                        native={native}
-                        onChange={patch => this.updateNative(patch)}
-                        socket={this.socket}
-                        theme={{ theme: this.state.theme, themeType: this.state.themeType }}
-                    />
-                ) : this.state.tab === 1 ? (
-                    <Status
-                        namespace={`${this.adapterName}.${this.instance}`}
-                        native={native}
-                        socket={this.socket}
-                    />
-                ) : this.state.tab === 2 ? (
-                    <Devices
-                        native={native}
-                        onChange={patch => this.updateNative(patch)}
-                        socket={this.socket}
-                        theme={{ theme: this.state.theme, themeType: this.state.themeType }}
-                    />
-                ) : (
-                    <Simulation native={native} />
-                )}
+                {/* Only the tab content scrolls; the purpose line and the tabs stay put. The
+                    bottom padding keeps the last element clear of the save toolbar, which the admin
+                    places over the page rather than in it. */}
+                <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto', pb: 12 }}>
+                    {this.state.tab === 0 ? (
+                        <FirstRun
+                            native={native}
+                            onChange={patch => this.updateNative(patch)}
+                            socket={this.socket}
+                            theme={{ theme: this.state.theme, themeType: this.state.themeType }}
+                        />
+                    ) : this.state.tab === 1 ? (
+                        <Status
+                            namespace={`${this.adapterName}.${this.instance}`}
+                            native={native}
+                            socket={this.socket}
+                        />
+                    ) : this.state.tab === 2 ? (
+                        <Devices
+                            native={native}
+                            onChange={patch => this.updateNative(patch)}
+                            socket={this.socket}
+                            theme={{ theme: this.state.theme, themeType: this.state.themeType }}
+                        />
+                    ) : (
+                        <Simulation native={native} />
+                    )}
+                </Box>
             </Box>
         );
     }
