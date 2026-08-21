@@ -5,6 +5,7 @@ import {
     newConsumerKey,
     normalizeNative,
     subscribedIds,
+    feedbackWatts,
     targetValue,
     toDomainConfig,
     validateNative,
@@ -248,5 +249,20 @@ describe('targetValue', () => {
     it('gives a plain switch a boolean, not a number', () => {
         expect(targetValue(DEFAULT_CONSUMER as NativeConsumer, 1000)).to.equal(true);
         expect(targetValue(DEFAULT_CONSUMER as NativeConsumer, 0)).to.equal(false);
+    });
+});
+
+describe('feedbackWatts', () => {
+    it('reads a wallbox that reports only its charging current', () => {
+        expect(feedbackWatts(wallbox({ feedbackUnit: 'ampere' }), 10)).to.equal(6900);
+    });
+
+    it('leaves a device that reports watts as it is', () => {
+        expect(feedbackWatts(wallbox(), 1234)).to.equal(1234);
+    });
+
+    it('needs phases and voltage before a reported current means anything', () => {
+        const reporter = wallbox({ targetUnit: 'switch', feedbackUnit: 'ampere', voltageV: 0 });
+        expect(fields(usable({ consumers: [reporter] }))).to.deep.equal(['consumers']);
     });
 });

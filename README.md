@@ -115,6 +115,10 @@ npm test
   already answers whether PowerQueue would be worth switching on.
 - (typhosj) The configuration page scrolls again. Nothing in it had a height of its own, so every
   tab ended at the lower edge of the frame — the button that adds a device was below it.
+- (typhosj) A device card asks what kind of device it is first, and then asks for its values in
+  the unit that kind is spoken in: a wallbox is configured in amperes, not in watts.
+- (typhosj) A device that reports only its charging current can be used as the measured value; the
+  phases and the voltage turn it into watts.
 
 ### 0.1.0 (2026-08-13)
 

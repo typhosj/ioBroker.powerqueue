@@ -15,6 +15,7 @@ import {
     worthWriting,
 } from './lib/allocator';
 import {
+    feedbackWatts,
     normalizeNative,
     subscribedIds,
     targetValue,
@@ -410,7 +411,9 @@ class Powerqueue extends utils.Adapter {
             consumers[consumer.key] = {
                 // Without a configured condition a device is always usable.
                 available: consumer.availabilityId ? (this.availability.get(consumer.key) ?? false) : true,
-                actualPowerW: usable ? feedback.value : null,
+                // A wallbox that reports amperes has to be read as amperes, or a car charging with
+                // 16 A would look like 16 W and the budget would be handed out twice.
+                actualPowerW: usable ? feedbackWatts(consumer, feedback.value) : null,
             };
         }
         return {

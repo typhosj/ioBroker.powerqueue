@@ -59,9 +59,26 @@ function isNumber(obj: ioBroker.Object): boolean {
     return obj.common?.type === 'number';
 }
 
+/**
+ * @param consumer - the consumer whose phases and voltage apply
+ * @returns the watts one ampere per phase stands for — the factor between the two units
+ */
+function wattsPerAmp(consumer: NativeConsumer): number {
+    return Math.max(consumer.phases, 1) * (consumer.voltageV > 0 ? consumer.voltageV : 230);
+}
+
+/**
+ * @param watts - a stored power
+ * @param consumer - the consumer it belongs to
+ * @returns the same power as a current per phase, rounded to a tenth of an ampere
+ */
+function amperes(watts: number, consumer: NativeConsumer): number {
+    return Math.round((watts / wattsPerAmp(consumer)) * 10) / 10;
+}
+
 interface AdoptMeasuredPowerProps {
     socket: AdminConnection;
-    feedbackId: string;
+    consumer: NativeConsumer;
     onAdopt: (watts: number) => void;
 }
 
@@ -75,11 +92,12 @@ interface AdoptMeasuredPowerProps {
  * @returns a button that copies the current reading into the configured power, or nothing
  */
 function AdoptMeasuredPower(props: AdoptMeasuredPowerProps): React.JSX.Element | null {
-    const live = useLiveValue(props.socket, props.feedbackId);
+    const live = useLiveValue(props.socket, props.consumer.feedbackId);
     if (live.value === null || live.value < 1) {
         return null;
     }
-    const watts = Math.round(live.value);
+    const reportsCurrent = props.consumer.feedbackUnit === 'ampere';
+    const watts = Math.round(reportsCurrent ? live.value * wattsPerAmp(props.consumer) : live.value);
 
     return (
         <Button
@@ -87,7 +105,9 @@ function AdoptMeasuredPower(props: AdoptMeasuredPowerProps): React.JSX.Element |
             size="small"
             sx={{ alignSelf: 'flex-start' }}
         >
-            {I18n.t('It is running now: use the measured %s W', String(watts))}
+            {reportsCurrent
+                ? I18n.t('It is running now: use the measured %s A', String(Math.round(live.value * 10) / 10))
+                : I18n.t('It is running now: use the measured %s W', String(watts))}
         </Button>
     );
 }
@@ -137,6 +157,53 @@ export function Devices(props: DevicesProps): React.JSX.Element {
         onChange({ consumers: moved.map((consumer, position) => ({ ...consumer, priority: position + 1 })) });
     }
 
+    /**
+     * Change what kind of device this is.
+     *
+     * The selected target is dropped when the kind of target changes, because a switch and a state
+     * that takes a power are never the same object. A device that is told a current starts at the
+     * 6 to 16 A every wallbox can do, so its fields are never empty in a unit nobody guesses.
+     *
+     * @param consumer - the consumer to change
+     * @param unit - what the device is told
+     */
+    function changeUnit(consumer: NativeConsumer, unit: TargetUnit): void {
+        const crosses = (unit === 'switch') !== (consumer.targetUnit === 'switch');
+        const patch: Partial<NativeConsumer> = { targetUnit: unit, ...(crosses ? { targetId: '' } : {}) };
+        if (unit === 'ampere') {
+            const factor = wattsPerAmp(consumer);
+            // A wallbox follows whole amperes, so the step is not a question for the user.
+            patch.stepW = factor;
+            if (!(consumer.minPowerW > 0)) {
+                patch.minPowerW = 6 * factor;
+            }
+            if (!(consumer.nominalPowerW > 0)) {
+                patch.nominalPowerW = 16 * factor;
+            }
+        }
+        update(consumer.key, patch);
+    }
+
+    /**
+     * Change the phases or the voltage.
+     *
+     * Both are the factor between amperes and watts, so the currents the user entered have to stay
+     * where they are and the stored watts have to move — not the other way round.
+     *
+     * @param consumer - the consumer to change
+     * @param patch - the new phases, the new voltage, or both
+     */
+    function changeFactor(consumer: NativeConsumer, patch: Partial<NativeConsumer>): void {
+        const before = wattsPerAmp(consumer);
+        const after = wattsPerAmp({ ...consumer, ...patch });
+        update(consumer.key, {
+            ...patch,
+            stepW: after,
+            minPowerW: Math.round((consumer.minPowerW / before) * after),
+            nominalPowerW: Math.round((consumer.nominalPowerW / before) * after),
+        });
+    }
+
     // A device that still needs input opens itself; a finished one stays folded until it is asked for.
     const [expanded, setExpanded] = React.useState<Record<string, boolean>>({});
 
@@ -156,7 +223,13 @@ export function Devices(props: DevicesProps): React.JSX.Element {
         const parts = [
             consumer.targetUnit === 'switch'
                 ? I18n.t('%s W', String(consumer.nominalPowerW))
-                : I18n.t('%s to %s W', String(consumer.minPowerW), String(consumer.nominalPowerW)),
+                : consumer.targetUnit === 'ampere'
+                  ? I18n.t(
+                        '%s to %s A',
+                        String(amperes(consumer.minPowerW, consumer)),
+                        String(amperes(consumer.nominalPowerW, consumer)),
+                    )
+                  : I18n.t('%s to %s W', String(consumer.minPowerW), String(consumer.nominalPowerW)),
         ];
         if (!consumer.enabled) {
             parts.push(I18n.t('not taking part'));
@@ -365,12 +438,85 @@ export function Devices(props: DevicesProps): React.JSX.Element {
                                 value={consumer.name}
                                 variant="standard"
                             />
+
+                            <Typography variant="subtitle2">{I18n.t('What kind of device is this?')}</Typography>
+                            <Typography
+                                color="text.secondary"
+                                variant="body2"
+                            >
+                                {I18n.t(
+                                    'Some devices do not only run or stand still: a wallbox charges with more or less current, a heating element with more or less power. PowerQueue gives such a device exactly what is left over.',
+                                )}
+                            </Typography>
+                            <RadioGroup
+                                onChange={event => changeUnit(consumer, event.target.value as TargetUnit)}
+                                value={consumer.targetUnit}
+                            >
+                                <FormControlLabel
+                                    control={<Radio />}
+                                    label={I18n.t('It can only be switched on and off.')}
+                                    value="switch"
+                                />
+                                <FormControlLabel
+                                    control={<Radio />}
+                                    label={I18n.t('It is given a charging current in amperes per phase.')}
+                                    value="ampere"
+                                />
+                                <FormControlLabel
+                                    control={<Radio />}
+                                    label={I18n.t('It is given a power in watts.')}
+                                    value="watt"
+                                />
+                                <FormControlLabel
+                                    control={<Radio />}
+                                    label={I18n.t('It is given a percentage of its highest power.')}
+                                    value="percent"
+                                />
+                            </RadioGroup>
+
+                            {consumer.targetUnit === 'ampere' || consumer.feedbackUnit === 'ampere' ? (
+                                <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center', pl: 1 }}>
+                                    <RadioGroup
+                                        onChange={event =>
+                                            changeFactor(consumer, { phases: Number(event.target.value) })
+                                        }
+                                        row
+                                        value={consumer.phases}
+                                    >
+                                        <FormControlLabel
+                                            control={<Radio />}
+                                            label={I18n.t('One phase')}
+                                            value={1}
+                                        />
+                                        <FormControlLabel
+                                            control={<Radio />}
+                                            label={I18n.t('Three phases')}
+                                            value={3}
+                                        />
+                                    </RadioGroup>
+                                    <TextField
+                                        helperText={I18n.t(
+                                            'Used to turn watts into amperes. 230 V is only the nominal value; take the measured one if you have it.',
+                                        )}
+                                        label={I18n.t('Mains voltage (V)')}
+                                        onChange={event =>
+                                            changeFactor(consumer, { voltageV: Number(event.target.value) })
+                                        }
+                                        type="number"
+                                        value={consumer.voltageV}
+                                        variant="standard"
+                                    />
+                                </Box>
+                            ) : null}
+
                             <SelectStateButton
                                 filterFunc={consumer.targetUnit === 'switch' ? isSwitch : isWritableNumber}
                                 label={
                                     consumer.targetUnit === 'switch'
                                         ? I18n.t('Select switch')
-                                        : I18n.t('Select the state that sets the power')
+                                        : consumer.targetUnit === 'ampere'
+                                          ? I18n.t('Select the state that sets the charging current')
+                                          : I18n.t('Select the state that sets the power')
                                 }
                                 onSelect={(id, name) =>
                                     update(consumer.key, { targetId: id, name: consumer.name || name || id })
@@ -379,14 +525,38 @@ export function Devices(props: DevicesProps): React.JSX.Element {
                                 theme={props.theme}
                                 value={consumer.targetId}
                             />
+
                             <SelectStateButton
                                 filterFunc={isPowerState}
-                                label={I18n.t('Select measured power (optional)')}
+                                label={I18n.t('Select what the device reports (optional)')}
                                 onSelect={id => update(consumer.key, { feedbackId: id })}
                                 socket={props.socket}
                                 theme={props.theme}
                                 value={consumer.feedbackId}
                             />
+                            {consumer.feedbackId ? (
+                                <RadioGroup
+                                    onChange={event =>
+                                        update(consumer.key, {
+                                            feedbackUnit: event.target.value as NativeConsumer['feedbackUnit'],
+                                        })
+                                    }
+                                    row
+                                    sx={{ pl: 1 }}
+                                    value={consumer.feedbackUnit}
+                                >
+                                    <FormControlLabel
+                                        control={<Radio />}
+                                        label={I18n.t('It reports a power in watts.')}
+                                        value="watt"
+                                    />
+                                    <FormControlLabel
+                                        control={<Radio />}
+                                        label={I18n.t('It reports a charging current in amperes.')}
+                                        value="ampere"
+                                    />
+                                </RadioGroup>
+                            ) : null}
 
                             <Typography
                                 color="text.secondary"
@@ -434,22 +604,89 @@ export function Devices(props: DevicesProps): React.JSX.Element {
                             ) : null}
 
                             <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-                                <TextField
-                                    helperText={I18n.t(
-                                        'Roughly how much it uses while it runs. The type plate is enough.',
-                                    )}
-                                    label={
-                                        consumer.targetUnit === 'switch'
-                                            ? I18n.t('Power consumption (W)')
-                                            : I18n.t('Highest power (W)')
-                                    }
-                                    onChange={event =>
-                                        update(consumer.key, { nominalPowerW: Number(event.target.value) })
-                                    }
-                                    type="number"
-                                    value={consumer.nominalPowerW}
-                                    variant="standard"
-                                />
+                                {consumer.targetUnit === 'ampere' ? (
+                                    <>
+                                        <TextField
+                                            helperText={I18n.t('As far as PowerQueue may raise the charge.')}
+                                            label={I18n.t('Highest charging current (A)')}
+                                            onChange={event =>
+                                                update(consumer.key, {
+                                                    nominalPowerW: Math.round(
+                                                        Number(event.target.value) * wattsPerAmp(consumer),
+                                                    ),
+                                                })
+                                            }
+                                            type="number"
+                                            value={amperes(consumer.nominalPowerW, consumer)}
+                                            variant="standard"
+                                        />
+                                        <TextField
+                                            helperText={I18n.t(
+                                                'Below this the charge is stopped instead. A car may not charge below 6 A per phase.',
+                                            )}
+                                            label={I18n.t('Lowest charging current (A)')}
+                                            onChange={event =>
+                                                update(consumer.key, {
+                                                    minPowerW: Math.round(
+                                                        Number(event.target.value) * wattsPerAmp(consumer),
+                                                    ),
+                                                })
+                                            }
+                                            type="number"
+                                            value={amperes(consumer.minPowerW, consumer)}
+                                            variant="standard"
+                                        />
+                                    </>
+                                ) : (
+                                    <>
+                                        <TextField
+                                            helperText={I18n.t(
+                                                'Roughly how much it uses while it runs. The type plate is enough.',
+                                            )}
+                                            label={
+                                                consumer.targetUnit === 'switch'
+                                                    ? I18n.t('Power consumption (W)')
+                                                    : I18n.t('Highest power (W)')
+                                            }
+                                            onChange={event =>
+                                                update(consumer.key, { nominalPowerW: Number(event.target.value) })
+                                            }
+                                            type="number"
+                                            value={consumer.nominalPowerW}
+                                            variant="standard"
+                                        />
+                                        {consumer.targetUnit === 'switch' ? null : (
+                                            <>
+                                                <TextField
+                                                    helperText={I18n.t(
+                                                        'Below this the device is switched off instead.',
+                                                    )}
+                                                    label={I18n.t('Lowest power (W)')}
+                                                    onChange={event =>
+                                                        update(consumer.key, {
+                                                            minPowerW: Number(event.target.value),
+                                                        })
+                                                    }
+                                                    type="number"
+                                                    value={consumer.minPowerW}
+                                                    variant="standard"
+                                                />
+                                                <TextField
+                                                    helperText={I18n.t(
+                                                        'The smallest change the device can follow. Leave it at 0 if it follows every watt.',
+                                                    )}
+                                                    label={I18n.t('Step size (W)')}
+                                                    onChange={event =>
+                                                        update(consumer.key, { stepW: Number(event.target.value) })
+                                                    }
+                                                    type="number"
+                                                    value={consumer.stepW}
+                                                    variant="standard"
+                                                />
+                                            </>
+                                        )}
+                                    </>
+                                )}
                                 <TextField
                                     helperText={I18n.t('Keeps running at least this long.')}
                                     label={I18n.t('Minimum runtime (min)')}
@@ -473,134 +710,11 @@ export function Devices(props: DevicesProps): React.JSX.Element {
                             </Box>
                             {consumer.feedbackId ? (
                                 <AdoptMeasuredPower
-                                    feedbackId={consumer.feedbackId}
+                                    consumer={consumer}
                                     onAdopt={watts => update(consumer.key, { nominalPowerW: watts })}
                                     socket={props.socket}
                                 />
                             ) : null}
-
-                            <Typography
-                                color="text.secondary"
-                                variant="body2"
-                            >
-                                {I18n.t(
-                                    'Some devices do not only run or stand still: a wallbox charges with more or less current, a heating element with more or less power. PowerQueue gives such a device exactly what is left over.',
-                                )}
-                            </Typography>
-                            <RadioGroup
-                                onChange={event => {
-                                    const unit = event.target.value as TargetUnit;
-                                    // A switch and a power setting are never the same state, so the
-                                    // selected target is dropped when the kind of target changes.
-                                    const crosses = (unit === 'switch') !== (consumer.targetUnit === 'switch');
-                                    update(consumer.key, { targetUnit: unit, ...(crosses ? { targetId: '' } : {}) });
-                                }}
-                                value={consumer.targetUnit}
-                            >
-                                <FormControlLabel
-                                    control={<Radio />}
-                                    label={I18n.t('It can only be switched on and off.')}
-                                    value="switch"
-                                />
-                                <FormControlLabel
-                                    control={<Radio />}
-                                    label={I18n.t('It is given a charging current in amperes per phase.')}
-                                    value="ampere"
-                                />
-                                <FormControlLabel
-                                    control={<Radio />}
-                                    label={I18n.t('It is given a power in watts.')}
-                                    value="watt"
-                                />
-                                <FormControlLabel
-                                    control={<Radio />}
-                                    label={I18n.t('It is given a percentage of its highest power.')}
-                                    value="percent"
-                                />
-                            </RadioGroup>
-
-                            {consumer.targetUnit === 'switch' ? null : (
-                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pl: 1 }}>
-                                    <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-                                        <TextField
-                                            helperText={I18n.t(
-                                                'Below this the device is switched off instead. A car may not charge below 6 A per phase.',
-                                            )}
-                                            label={I18n.t('Lowest power (W)')}
-                                            onChange={event =>
-                                                update(consumer.key, { minPowerW: Number(event.target.value) })
-                                            }
-                                            type="number"
-                                            value={consumer.minPowerW}
-                                            variant="standard"
-                                        />
-                                        <TextField
-                                            helperText={I18n.t(
-                                                'The smallest change the device can follow. Leave it at 0 if it follows every watt.',
-                                            )}
-                                            label={I18n.t('Step size (W)')}
-                                            onChange={event =>
-                                                update(consumer.key, { stepW: Number(event.target.value) })
-                                            }
-                                            type="number"
-                                            value={consumer.stepW}
-                                            variant="standard"
-                                        />
-                                    </Box>
-
-                                    {consumer.targetUnit === 'ampere' ? (
-                                        <>
-                                            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-                                                <RadioGroup
-                                                    onChange={event =>
-                                                        update(consumer.key, { phases: Number(event.target.value) })
-                                                    }
-                                                    row
-                                                    value={consumer.phases}
-                                                >
-                                                    <FormControlLabel
-                                                        control={<Radio />}
-                                                        label={I18n.t('One phase')}
-                                                        value={1}
-                                                    />
-                                                    <FormControlLabel
-                                                        control={<Radio />}
-                                                        label={I18n.t('Three phases')}
-                                                        value={3}
-                                                    />
-                                                </RadioGroup>
-                                                <TextField
-                                                    helperText={I18n.t(
-                                                        'Used to turn watts into amperes. 230 V is only the nominal value; take the measured one if you have it.',
-                                                    )}
-                                                    label={I18n.t('Mains voltage (V)')}
-                                                    onChange={event =>
-                                                        update(consumer.key, { voltageV: Number(event.target.value) })
-                                                    }
-                                                    type="number"
-                                                    value={consumer.voltageV}
-                                                    variant="standard"
-                                                />
-                                            </Box>
-                                            <Button
-                                                onClick={() =>
-                                                    update(consumer.key, {
-                                                        minPowerW: Math.round(6 * consumer.phases * consumer.voltageV),
-                                                        stepW: Math.round(consumer.phases * consumer.voltageV),
-                                                        nominalPowerW: Math.round(
-                                                            16 * consumer.phases * consumer.voltageV,
-                                                        ),
-                                                    })
-                                                }
-                                                size="small"
-                                                sx={{ alignSelf: 'flex-start' }}
-                                            >
-                                                {I18n.t('Fill in the usual 6 to 16 A of a wallbox')}
-                                            </Button>
-                                        </>
-                                    ) : null}
-                                </Box>
-                            )}
 
                             <FormControlLabel
                                 control={

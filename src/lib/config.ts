@@ -23,8 +23,13 @@ export interface NativeConsumer {
     name: string;
     /** Writable switch that PowerQueue turns on and off. */
     targetId: string;
-    /** Optional measured power of the consumer. Empty when the device does not report it. */
+    /** Optional measured value of the consumer. Empty when the device does not report one. */
     feedbackId: string;
+    /**
+     * What {@link NativeConsumer.feedbackId} measures. A wallbox often reports only the charging
+     * current, and a current says nothing about power until the phases and the voltage are known.
+     */
+    feedbackUnit: 'watt' | 'ampere';
     /**
      * Optional condition that has to hold before the device may run at all — a door contact, a
      * holiday switch, a "the car is plugged in" state. Missing means the device is always usable.
@@ -97,6 +102,7 @@ export const DEFAULT_CONSUMER: Omit<NativeConsumer, 'key'> = {
     name: '',
     targetId: '',
     feedbackId: '',
+    feedbackUnit: 'watt',
     availabilityId: '',
     availableWhen: true,
     nominalPowerW: 0,
@@ -246,7 +252,8 @@ export function validateNative(native: NativeConfig): ConfigProblem[] {
                 problems.push({ ...where, message: 'The step size of "%s" cannot be negative.' });
             }
         }
-        if (consumer.targetUnit === 'ampere' && (!(consumer.phases >= 1) || !(consumer.voltageV > 0))) {
+        const usesCurrent = consumer.targetUnit === 'ampere' || consumer.feedbackUnit === 'ampere';
+        if (usesCurrent && (!(consumer.phases >= 1) || !(consumer.voltageV > 0))) {
             problems.push({
                 ...where,
                 message: 'To set a charging current PowerQueue needs the phases and the voltage of "%s".',
@@ -278,6 +285,17 @@ const MINUTE_MS = 60_000;
 function lowestPowerW(consumer: NativeConsumer): number {
     const floor = consumer.targetUnit === 'switch' ? 0 : consumer.minPowerW;
     return floor > 0 && floor <= consumer.nominalPowerW ? floor : consumer.nominalPowerW;
+}
+
+/**
+ * Translate what a device reports into watts.
+ *
+ * @param consumer - the stored consumer
+ * @param value - the measured value, in whatever unit the device reports
+ * @returns the measured power in watts
+ */
+export function feedbackWatts(consumer: NativeConsumer, value: number): number {
+    return consumer.feedbackUnit === 'ampere' ? value * consumer.phases * consumer.voltageV : value;
 }
 
 /**
