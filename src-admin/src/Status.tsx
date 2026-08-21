@@ -122,6 +122,17 @@ export function Status(props: StatusProps): React.JSX.Element {
                         watt(budget.remainingW),
                     )}
                 </Typography>
+                {budget.availableW > budget.surplusW ? (
+                    <Typography
+                        color="text.secondary"
+                        variant="body2"
+                    >
+                        {I18n.t(
+                            'That is more than the house feeds in, because %s of it is already being drawn by your flexible devices — power PowerQueue can hand on instead of giving it back.',
+                            watt(budget.availableW - budget.surplusW),
+                        )}
+                    </Typography>
+                ) : null}
                 <Typography
                     color="text.secondary"
                     variant="body2"

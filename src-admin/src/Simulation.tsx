@@ -115,6 +115,17 @@ export function Simulation(props: SimulationProps): React.JSX.Element {
                         watt(step.plan.budget.remainingW),
                     )}
                 </Typography>
+                {step.plan.budget.availableW > surplus ? (
+                    <Typography
+                        color="text.secondary"
+                        variant="body2"
+                    >
+                        {I18n.t(
+                            'That is more than the house feeds in, because %s of it is already being drawn by your flexible devices — power PowerQueue can hand on instead of giving it back.',
+                            watt(step.plan.budget.availableW - surplus),
+                        )}
+                    </Typography>
+                ) : null}
                 <Typography
                     color="text.secondary"
                     variant="body2"

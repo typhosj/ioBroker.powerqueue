@@ -133,6 +133,7 @@
     "Step size (W)": "Dimensione del passo (W)",
     "Surplus power PowerQueue never hands out, so a kettle or a hair dryer does not immediately pull from the grid.": "La potenza in eccesso PowerQueue non viene mai distribuita, quindi un bollitore o un asciugacapelli non vengono estratti immediatamente dalla rete.",
     "Takes part in the planning": "Partecipa alla pianificazione",
+    "That is more than the house feeds in, because %s of it is already being drawn by your flexible devices — power PowerQueue can hand on instead of giving it back.": "Si tratta di più di quanto la casa immette, perché %s di esso viene già assorbito dai tuoi dispositivi flessibili: energia che PowerQueue può trasferire invece di restituirla.",
     "That is what PowerQueue would have carried, including what a device is already drawing by itself.": "Questo è ciò che PowerQueue avrebbe portato, compreso ciò che un dispositivo sta già disegnando da solo.",
     "That much surplus power was there for them while PowerQueue was only watching.": "Quella potenza in eccesso era lì per loro mentre PowerQueue stava solo a guardare.",
     "The averaging period cannot be longer than the age at which a reading is discarded.": "Il periodo di media non può essere più lungo dell'età alla quale una lettura viene scartata.",

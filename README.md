@@ -129,6 +129,11 @@ npm test
 - (typhosj) A plan takes the devices PowerQueue does not operate as they really are. Before, every
   device counted as off while PowerQueue was only watching, so the surplus a running pump already
   used was offered to another device on top of it.
+- (typhosj) The power of a device that takes no part in the planning is no longer added to the
+  budget. It keeps drawing whatever it draws, so offering it to another device spent the same watts
+  twice; only the command PowerQueue is about to revoke comes back.
+- (typhosj) The budget lines say why the distributable power can be larger than what the house
+  feeds in: the flexible devices that are already running are part of it.
 
 ### 0.1.0 (2026-08-13)
 

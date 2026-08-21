@@ -133,6 +133,7 @@
     "Step size (W)": "Розмір кроку (W)",
     "Surplus power PowerQueue never hands out, so a kettle or a hair dryer does not immediately pull from the grid.": "Надлишок електроенергії PowerQueue ніколи не роздає, тож чайник чи фен не відразу відриваються від мережі.",
     "Takes part in the planning": "Бере участь у плануванні",
+    "That is more than the house feeds in, because %s of it is already being drawn by your flexible devices — power PowerQueue can hand on instead of giving it back.": "Це більше, ніж домівка, тому що %s цього вже споживається вашими гнучкими пристроями — PowerQueue може передавати, а не повертати.",
     "That is what PowerQueue would have carried, including what a device is already drawing by itself.": "Це те, що мав би PowerQueue, включаючи те, що пристрій уже малює сам по собі.",
     "That much surplus power was there for them while PowerQueue was only watching.": "У них було стільки надлишку енергії, поки PowerQueue лише спостерігав.",
     "The averaging period cannot be longer than the age at which a reading is discarded.": "Період усереднення не може бути довшим за вік, у якому показання відкидаються.",

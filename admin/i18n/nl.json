@@ -133,6 +133,7 @@
     "Step size (W)": "Stapgrootte (W)",
     "Surplus power PowerQueue never hands out, so a kettle or a hair dryer does not immediately pull from the grid.": "Overtollig vermogen PowerQueue deelt nooit uit, dus een waterkoker of föhn trekt niet meteen van het rooster.",
     "Takes part in the planning": "Neemt deel aan de planning",
+    "That is more than the house feeds in, because %s of it is already being drawn by your flexible devices — power PowerQueue can hand on instead of giving it back.": "Dat is meer dan het huis binnenkrijgt, omdat %s ervan al wordt verbruikt door uw flexibele apparaten; energie die PowerQueue kan doorgeven in plaats van terug te geven.",
     "That is what PowerQueue would have carried, including what a device is already drawing by itself.": "Dat is wat PowerQueue zou hebben uitgevoerd, inclusief wat een apparaat zelf al tekent.",
     "That much surplus power was there for them while PowerQueue was only watching.": "Zoveel overtollige stroom was er voor hen terwijl PowerQueue alleen maar toekeek.",
     "The averaging period cannot be longer than the age at which a reading is discarded.": "De middelingsperiode kan niet langer zijn dan de leeftijd waarop een meting wordt weggegooid.",

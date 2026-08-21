@@ -133,6 +133,7 @@
     "Step size (W)": "步长（W）",
     "Surplus power PowerQueue never hands out, so a kettle or a hair dryer does not immediately pull from the grid.": "PowerQueue 永远不会释放剩余电力，因此水壶或吹风机不会立即从电网中拔出。",
     "Takes part in the planning": "参与策划",
+    "That is more than the house feeds in, because %s of it is already being drawn by your flexible devices — power PowerQueue can hand on instead of giving it back.": "这比房子的供电量还要多，因为其中 %s 已经被您的灵活设备消耗了——PowerQueue 可以传递电力，而不是归还。",
     "That is what PowerQueue would have carried, including what a device is already drawing by itself.": "这就是 PowerQueue 所携带的内容，包括设备已经自行绘制的内容。",
     "That much surplus power was there for them while PowerQueue was only watching.": "当PowerQueue只是在一旁观看时，他们就已经有了那么多的剩余电力。",
     "The averaging period cannot be longer than the age at which a reading is discarded.": "平均周期不能长于丢弃读数的年龄。",

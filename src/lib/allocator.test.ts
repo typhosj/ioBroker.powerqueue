@@ -550,3 +550,36 @@ describe('a device PowerQueue does not operate', () => {
         expect(plan.consumers[0].state).to.equal('committed');
     });
 });
+
+describe('what may be redistributed', () => {
+    it('does not offer the power of a device that takes no part in the planning', () => {
+        const idle = consumer({ key: 'pump', enabled: false });
+        const boiler = consumer({ key: 'boiler', priority: 2 });
+        const drawing = {
+            consumers: {
+                pump: { available: true, actualPowerW: 1000 },
+                boiler: { available: true, actualPowerW: null },
+            },
+        };
+
+        // 300 W are really spare. The pump keeps its 1000 W whatever the plan says, so they are
+        // not part of the budget and the boiler has to wait.
+        const plan = allocate(config([idle, boiler]), snapshot(-300, ['pump', 'boiler'], drawing), {});
+        expect(plan.budget.availableW).to.equal(300);
+        expect(decision(plan, 'boiler').state).to.equal('waiting');
+    });
+
+    it('offers the power of a device it plans for, because it can switch that one off', () => {
+        const pump = consumer({ key: 'pump' });
+        const boiler = consumer({ key: 'boiler', priority: 2 });
+        const drawing = {
+            consumers: {
+                pump: { available: true, actualPowerW: 1000 },
+                boiler: { available: true, actualPowerW: null },
+            },
+        };
+
+        const plan = allocate(config([pump, boiler]), snapshot(-300, ['pump', 'boiler'], drawing), {});
+        expect(plan.budget.availableW).to.equal(1300);
+    });
+});

@@ -290,14 +290,22 @@ export function allocate(config: Config, snapshot: Snapshot, runtime: Runtime): 
     const ordered = [...config.consumers].sort(byPriority);
 
     // Running consumers already show up in the grid reading, so their power has to be added back
-    // before it can be redistributed. Overridden consumers are not ours to redistribute.
-    const controlled = ordered.filter(consumer => {
+    // before it can be redistributed — but only the power this plan could really free again.
+    const drawnW = ordered.reduce((sum, consumer) => {
         const state = runtime[consumer.key] ?? emptyRuntime();
-        return !isOverridden(state, now);
-    });
-    const drawnW = controlled.reduce((sum, consumer) => {
-        const state = runtime[consumer.key] ?? emptyRuntime();
-        return sum + currentPowerW(state, snapshot.consumers[consumer.key]?.actualPowerW ?? null);
+        if (isOverridden(state, now)) {
+            // Someone else owns this one; its power is not ours to hand to anybody.
+            return sum;
+        }
+        // A consumer that takes no part in the planning keeps drawing whatever it draws, so only
+        // the command PowerQueue is about to revoke comes back into the budget. Promising the rest
+        // to another device would spend the same watts twice.
+        return (
+            sum +
+            (consumer.enabled
+                ? currentPowerW(state, snapshot.consumers[consumer.key]?.actualPowerW ?? null)
+                : state.appliedPowerW)
+        );
     }, 0);
 
     // A blocked battery does not remove the commitments of already running loads, it only stops
