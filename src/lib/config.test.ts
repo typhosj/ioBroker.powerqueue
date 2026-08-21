@@ -5,9 +5,11 @@ import {
     newConsumerKey,
     normalizeNative,
     subscribedIds,
+    targetValue,
     toDomainConfig,
     validateNative,
     type NativeConfig,
+    type NativeConsumer,
 } from './config';
 import { PLAN_REASON_TEXT } from './reasons';
 import { allocate } from './allocator';
@@ -31,6 +33,13 @@ function fields(native: NativeConfig): string[] {
 describe('normalizeNative', () => {
     it('survives the empty consumer list the object database hands back as an object', () => {
         expect(normalizeNative({ ...DEFAULT_NATIVE, consumers: {} }).consumers).to.deep.equal([]);
+    });
+
+    it('gives a device stored before this version the switch it always was', () => {
+        const stored = {
+            consumers: [{ key: 'c1', name: 'Pool pump', targetId: 'shelly.0.pump', nominalPowerW: 1000 }],
+        };
+        expect(normalizeNative(stored).consumers[0]).to.include({ targetUnit: 'switch', minPowerW: 0, stepW: 0 });
     });
 
     it('fills in fields an older instance never stored', () => {
@@ -179,5 +188,65 @@ describe('newConsumerKey', () => {
     it('does not repeat itself', () => {
         const keys = new Set(Array.from({ length: 100 }, () => newConsumerKey()));
         expect(keys.size).to.equal(100);
+    });
+});
+
+/** A three-phase wallbox that is told its charging current in amperes. */
+function wallbox(overrides: Partial<NativeConsumer> = {}): NativeConsumer {
+    return {
+        ...DEFAULT_CONSUMER,
+        key: 'wb',
+        name: 'Wallbox',
+        targetId: 'wallbox.0.current',
+        nominalPowerW: 11_040,
+        minPowerW: 4140,
+        stepW: 690,
+        targetUnit: 'ampere',
+        phases: 3,
+        voltageV: 230,
+        ...overrides,
+    };
+}
+
+describe('modulating configuration', () => {
+    it('accepts a fully configured wallbox', () => {
+        expect(validateNative(usable({ consumers: [wallbox()] }))).to.deep.equal([]);
+    });
+
+    it('insists on a lowest power a modulating device can actually run at', () => {
+        expect(fields(usable({ consumers: [wallbox({ minPowerW: 0 })] }))).to.deep.equal(['consumers']);
+        expect(fields(usable({ consumers: [wallbox({ minPowerW: 20_000 })] }))).to.deep.equal(['consumers']);
+    });
+
+    it('needs phases and voltage before it hands out a charging current', () => {
+        expect(fields(usable({ consumers: [wallbox({ voltageV: 0 })] }))).to.deep.equal(['consumers']);
+    });
+
+    it('gives a plain switch exactly one power, whatever else is stored', () => {
+        const stored = usable({ consumers: [wallbox({ targetUnit: 'switch' })] });
+        expect(toDomainConfig(stored).consumers[0]).to.include({ minPowerW: 11_040, stepW: 0 });
+    });
+});
+
+describe('targetValue', () => {
+    it('turns the granted power into whole amperes per phase', () => {
+        expect(targetValue(wallbox(), 4140)).to.equal(6);
+        expect(targetValue(wallbox(), 11_040)).to.equal(16);
+        expect(targetValue(wallbox(), 0)).to.equal(0);
+    });
+
+    it('rounds the current instead of truncating it, so 6 A stays 6 A on a real mains voltage', () => {
+        expect(targetValue(wallbox({ voltageV: 235 }), 4140)).to.equal(6);
+    });
+
+    it('expresses a percentage against the maximum power of the device', () => {
+        const heater = wallbox({ targetUnit: 'percent', nominalPowerW: 2000, minPowerW: 500 });
+        expect(targetValue(heater, 500)).to.equal(25);
+        expect(targetValue(heater, 3000)).to.equal(100);
+    });
+
+    it('gives a plain switch a boolean, not a number', () => {
+        expect(targetValue(DEFAULT_CONSUMER as NativeConsumer, 1000)).to.equal(true);
+        expect(targetValue(DEFAULT_CONSUMER as NativeConsumer, 0)).to.equal(false);
     });
 });

@@ -8,6 +8,14 @@
 
 import type { Config, ConsumerConfig, Mode } from './types';
 
+/**
+ * How the target state of a device expects to be told what to do.
+ *
+ * `switch` is a device that can only run or not run. The other three are modulating devices: a
+ * wallbox usually takes amperes per phase, a heating element a percentage, a few adapters watts.
+ */
+export type TargetUnit = 'switch' | 'watt' | 'ampere' | 'percent';
+
 /** One consumer as stored in the adapter configuration. Times are minutes, power is watts. */
 export interface NativeConsumer {
     /** Generated once when the consumer is created; never derived from the name. */
@@ -24,7 +32,21 @@ export interface NativeConsumer {
     availabilityId?: string;
     /** Which value of {@link NativeConsumer.availabilityId} means "may run". Defaults to `true`. */
     availableWhen?: boolean;
+    /** The power the device draws; for a modulating device its maximum. */
     nominalPowerW: number;
+    /**
+     * Lowest power a modulating device can run at. Below it the device is switched off instead: a
+     * car may not charge below 6 A per phase, and a pump below its floor only heats itself.
+     */
+    minPowerW: number;
+    /** Granularity the device can follow. `0` is continuous; a wallbox steps by 1 A per phase. */
+    stepW: number;
+    /** How {@link NativeConsumer.targetId} expects the power. */
+    targetUnit: TargetUnit;
+    /** Phases the device draws on, needed to turn watts into amperes. */
+    phases: number;
+    /** Mains voltage used for the same conversion. Nominal 230 V is rarely what the house has. */
+    voltageV: number;
     minOnMinutes: number;
     minOffMinutes: number;
     enabled: boolean;
@@ -78,6 +100,11 @@ export const DEFAULT_CONSUMER: Omit<NativeConsumer, 'key'> = {
     availabilityId: '',
     availableWhen: true,
     nominalPowerW: 0,
+    minPowerW: 0,
+    stepW: 0,
+    targetUnit: 'switch',
+    phases: 1,
+    voltageV: 230,
     minOnMinutes: 10,
     minOffMinutes: 10,
     enabled: true,
@@ -90,14 +117,16 @@ export const DEFAULT_CONSUMER: Omit<NativeConsumer, 'key'> = {
  *
  * A stored configuration is not a `NativeConfig` just because it was one when it was saved: an
  * empty `consumers` array comes back as an empty object, and an instance that predates a field has
- * no value for it at all. Everything that reads the configuration goes through here first.
+ * no value for it at all — a device stored before this version knows nothing about being modulating.
+ * Everything that reads the configuration goes through here first.
  *
  * @param stored - the configuration as it was read from the instance object
  * @returns a configuration with every field present and `consumers` guaranteed to be an array
  */
 export function normalizeNative(stored: unknown): NativeConfig {
     const native = { ...DEFAULT_NATIVE, ...(stored as Partial<NativeConfig>) };
-    return { ...native, consumers: Array.isArray(native.consumers) ? native.consumers : [] };
+    const consumers = Array.isArray(native.consumers) ? native.consumers : [];
+    return { ...native, consumers: consumers.map(consumer => ({ ...DEFAULT_CONSUMER, ...consumer })) };
 }
 
 /**
@@ -206,6 +235,23 @@ export function validateNative(native: NativeConfig): ConfigProblem[] {
         if (!(consumer.nominalPowerW > 0)) {
             problems.push({ ...where, message: 'PowerQueue needs to know how much power "%s" uses.' });
         }
+        if (consumer.targetUnit !== 'switch') {
+            if (!(consumer.minPowerW > 0) || consumer.minPowerW > consumer.nominalPowerW) {
+                problems.push({
+                    ...where,
+                    message: 'The lowest power of "%s" must be above zero and at most its maximum power.',
+                });
+            }
+            if (!(consumer.stepW >= 0)) {
+                problems.push({ ...where, message: 'The step size of "%s" cannot be negative.' });
+            }
+        }
+        if (consumer.targetUnit === 'ampere' && (!(consumer.phases >= 1) || !(consumer.voltageV > 0))) {
+            problems.push({
+                ...where,
+                message: 'To set a charging current PowerQueue needs the phases and the voltage of "%s".',
+            });
+        }
         if (!(consumer.minOnMinutes >= 0) || !(consumer.minOffMinutes >= 0)) {
             problems.push({ ...where, message: 'The switching times of "%s" cannot be negative.' });
         }
@@ -218,6 +264,43 @@ export function validateNative(native: NativeConfig): ConfigProblem[] {
 }
 
 const MINUTE_MS = 60_000;
+
+/**
+ * The floor the allocator has to respect.
+ *
+ * A device that can only be switched has exactly one power, so its floor is its nominal power and
+ * the whole modulating path collapses into the on/off case. A floor above the maximum would stop
+ * the device from ever running, so it is treated as no floor at all rather than as a lockout.
+ *
+ * @param consumer - the stored consumer
+ * @returns the lowest power the allocator may propose
+ */
+function lowestPowerW(consumer: NativeConsumer): number {
+    const floor = consumer.targetUnit === 'switch' ? 0 : consumer.minPowerW;
+    return floor > 0 && floor <= consumer.nominalPowerW ? floor : consumer.nominalPowerW;
+}
+
+/**
+ * Translate the power the allocator granted into the value the target state expects.
+ *
+ * @param consumer - the stored consumer
+ * @param watts - the power PowerQueue wants the device to draw
+ * @returns the value to write; a boolean only for a plain switch
+ */
+export function targetValue(consumer: NativeConsumer, watts: number): number | boolean {
+    switch (consumer.targetUnit) {
+        case 'watt':
+            return Math.max(0, Math.round(watts));
+        case 'ampere':
+            // Rounded, not truncated: 1380 W measured at 235 V is 5.87 A, and truncating that would
+            // command 5 A — below the 6 A per phase a car is allowed to charge with at all.
+            return watts <= 0 ? 0 : Math.round(watts / (consumer.phases * consumer.voltageV));
+        case 'percent':
+            return watts <= 0 ? 0 : Math.min(100, Math.round((watts / consumer.nominalPowerW) * 100));
+        default:
+            return watts > 0;
+    }
+}
 
 /**
  * Translate the stored configuration into what the allocator understands.
@@ -245,6 +328,8 @@ export function toDomainConfig(native: NativeConfig): Config {
             armed: consumer.armed,
             priority: consumer.priority,
             nominalPowerW: consumer.nominalPowerW,
+            minPowerW: lowestPowerW(consumer),
+            stepW: consumer.targetUnit === 'switch' ? 0 : Math.max(consumer.stepW, 0),
             minOnMs: consumer.minOnMinutes * MINUTE_MS,
             minOffMs: consumer.minOffMinutes * MINUTE_MS,
             safeOutputW: 0,

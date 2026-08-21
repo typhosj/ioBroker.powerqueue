@@ -41,7 +41,8 @@ possibilities, not MVP requirements.
 - One grid power input; the sign convention is confirmed by picking a plain-language sentence
   containing the current reading, never by entering a convention
 - Optional battery: charging power counts as available surplus, minimum SoC blocks allocation
-- Binary consumers (one writable switch) only
+- Consumers that are switched on and off, and consumers that are given a power: watts, amperes
+  per phase, or a percentage of their maximum
 - Ordered priorities, one global reserve, per-consumer minimum on/off times
 - `off`, `observe`, and explicitly armed `control` modes
 - Per-consumer availability, feedback, manual override, and safe state
@@ -50,9 +51,8 @@ possibilities, not MVP requirements.
 - Live simulation preview before active control
 - Restart-safe runtime state, stored in the adapter's own states
 
-Modulating loads, one-shot job loads, deadlines, weekday windows and daily runtime quotas are
-deliberately deferred to later versions. Power values are numeric from the start, so adding them
-will not change any published state.
+One-shot job loads, deadlines, weekday windows and daily runtime quotas are deliberately deferred
+to later versions, and so is automatic phase switching between one and three phases.
 
 ## Published states
 
@@ -77,7 +77,7 @@ hands the device over until midnight.
 - No direct battery dispatch
 - No EEBUS, OCPP, or German Section 14a implementation
 - No cloud dependency, no telemetry
-- No modulating or job consumers yet
+- No job consumers with a deadline yet, and no automatic 1P/3P phase switching
 - No fighting back against manual or external switching
 
 ## Safety
@@ -99,6 +99,17 @@ npm test
 ## Changelog
 
 <!-- Add changes for the next release here; the release script turns this into a version entry. -->
+### **WORK IN PROGRESS**
+
+- (typhosj) Devices that can be set to a power instead of only being switched: a wallbox takes a
+  charging current in amperes per phase, a heating element a percentage, some adapters watts.
+  PowerQueue keeps such a device between its lowest and its highest power, in the steps the device
+  can follow, and switches it off rather than running it below its floor.
+- (typhosj) A target is only written when it moves by a whole step or by five percent of the
+  maximum, so a wallbox is not re-commanded on every cloud.
+- (typhosj) The mains voltage used to turn watts into amperes can be corrected; 230 V is only the
+  nominal value.
+
 ### 0.1.0 (2026-08-13)
 
 - (typhosj) Runtime: inputs, evaluation loop, published plan and armed control writes.

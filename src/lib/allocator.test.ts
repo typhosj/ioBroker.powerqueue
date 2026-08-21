@@ -4,25 +4,42 @@
  */
 
 import { expect } from 'chai';
-import { allocate, applyPlan, emptyRuntime, nextMidnight, pruneSamples, smooth } from './allocator';
+import { allocate, applyPlan, emptyRuntime, nextMidnight, pruneSamples, smooth, worthWriting } from './allocator';
 import type { Config, ConsumerConfig, ConsumerRuntime, Plan, Runtime, Snapshot } from './types';
 
 const T0 = new Date('2026-08-09T12:00:00Z').getTime();
 const MINUTE = 60_000;
 
 function consumer(overrides: Partial<ConsumerConfig> = {}): ConsumerConfig {
-    return {
+    const merged = {
         key: 'pump',
         name: 'Pool pump',
         enabled: true,
         armed: true,
         priority: 1,
         nominalPowerW: 1000,
+        minPowerW: 0,
+        stepW: 0,
         minOnMs: 10 * MINUTE,
         minOffMs: 10 * MINUTE,
         safeOutputW: 0,
         ...overrides,
     };
+    // A device that can only be switched has exactly one power. Only a test that asks for a floor
+    // of its own gets a modulating consumer.
+    return { ...merged, minPowerW: overrides.minPowerW ?? merged.nominalPowerW };
+}
+
+/** Three-phase wallbox: 6 A per phase at the bottom, 16 A at the top, one ampere per step. */
+function wallbox(overrides: Partial<ConsumerConfig> = {}): ConsumerConfig {
+    return consumer({
+        key: 'wallbox',
+        name: 'Wallbox',
+        nominalPowerW: 11_040,
+        minPowerW: 4140,
+        stepW: 690,
+        ...overrides,
+    });
 }
 
 function config(consumers: ConsumerConfig[], energy: Partial<Config['energy']> = {}): Config {
@@ -382,5 +399,85 @@ describe('applyPlan', () => {
         const runtime = runtimeOf({ appliedPowerW: 1000, lastChange: T0, overrideUntil: T0 + MINUTE });
         const next = applyPlan(runtime, allocate(cfg, snapshot(-3000, ['pump']), runtime), T0 - MINUTE);
         expect(next.pump.overrideUntil).to.equal(T0 + MINUTE);
+    });
+});
+
+describe('modulating consumers', () => {
+    const cfg = config([wallbox()]);
+
+    it('starts at the lowest power the device can charge with', () => {
+        const runtime = runtimeOf({}, 'wallbox');
+        const plan = allocate(cfg, snapshot(-5000, ['wallbox']), runtime);
+        expect(plan.consumers[0].proposedPowerW).to.equal(4140);
+        expect(plan.consumers[0].state).to.equal('running');
+    });
+
+    it('does not start below the lowest power, however close the budget gets', () => {
+        const runtime = runtimeOf({}, 'wallbox');
+        const plan = allocate(cfg, snapshot(-4200, ['wallbox']), runtime);
+        expect(plan.consumers[0].proposedPowerW).to.equal(0);
+        expect(plan.consumers[0].reason).to.equal('insufficient_budget');
+    });
+
+    it('follows the surplus upwards in whole steps of one ampere per phase', () => {
+        const runtime = runtimeOf({ appliedPowerW: 4140, lastChange: T0 - 30 * MINUTE }, 'wallbox');
+        // 3000 W of surplus on top of the 4140 W the wallbox already draws: four more amperes fit,
+        // the remainder is not a whole step and stays unallocated.
+        const plan = allocate(cfg, snapshot(-3000, ['wallbox']), runtime);
+        expect(plan.consumers[0].proposedPowerW).to.equal(6900);
+        expect(plan.budget.remainingW).to.equal(240);
+    });
+
+    it('never proposes more than the device can take', () => {
+        const runtime = runtimeOf({ appliedPowerW: 4140, lastChange: T0 - 30 * MINUTE }, 'wallbox');
+        const plan = allocate(cfg, snapshot(-20_000, ['wallbox']), runtime);
+        expect(plan.consumers[0].proposedPowerW).to.equal(11_040);
+    });
+
+    it('follows the surplus downwards while it still covers the lowest power', () => {
+        const runtime = runtimeOf({ appliedPowerW: 6900, lastChange: T0 - 30 * MINUTE }, 'wallbox');
+        // The house eats 1000 W of what the wallbox had: two amperes per phase have to go back.
+        const plan = allocate(cfg, snapshot(1000, ['wallbox']), runtime);
+        expect(plan.consumers[0].proposedPowerW).to.equal(5520);
+        expect(plan.consumers[0].state).to.equal('running');
+    });
+
+    it('throttles to the lowest power instead of stopping inside the minimum runtime', () => {
+        const runtime = runtimeOf({ appliedPowerW: 6900, lastChange: T0 - MINUTE }, 'wallbox');
+        const plan = allocate(cfg, snapshot(3000, ['wallbox']), runtime);
+        expect(plan.consumers[0].proposedPowerW).to.equal(4140);
+        expect(plan.consumers[0].state).to.equal('committed');
+    });
+
+    it('stops once the budget no longer covers the lowest power and the minimum runtime is over', () => {
+        const runtime = runtimeOf({ appliedPowerW: 6900, lastChange: T0 - 30 * MINUTE }, 'wallbox');
+        const plan = allocate(cfg, snapshot(4000, ['wallbox']), runtime);
+        expect(plan.consumers[0].proposedPowerW).to.equal(0);
+        expect(plan.consumers[0].state).to.equal('off');
+    });
+
+    it('hands out every watt when the device modulates continuously', () => {
+        const heater = consumer({ key: 'heater', nominalPowerW: 2000, minPowerW: 500, stepW: 0 });
+        const runtime = runtimeOf({ appliedPowerW: 500, lastChange: T0 - 30 * MINUTE }, 'heater');
+        const plan = allocate(config([heater]), snapshot(-734, ['heater']), runtime);
+        expect(plan.consumers[0].proposedPowerW).to.equal(1234);
+    });
+});
+
+describe('worthWriting', () => {
+    it('always writes the change between running and not running', () => {
+        expect(worthWriting(wallbox(), 0, 4140)).to.equal(true);
+        expect(worthWriting(wallbox(), 6900, 0)).to.equal(true);
+    });
+
+    it('leaves a modulating target alone while the change is smaller than one step', () => {
+        expect(worthWriting(wallbox(), 4140, 4600)).to.equal(false);
+        expect(worthWriting(wallbox(), 4140, 4830)).to.equal(true);
+    });
+
+    it('keeps a dead band for a device without steps', () => {
+        const heater = consumer({ nominalPowerW: 2000, minPowerW: 500, stepW: 0 });
+        expect(worthWriting(heater, 1000, 1050)).to.equal(false);
+        expect(worthWriting(heater, 1000, 1100)).to.equal(true);
     });
 });

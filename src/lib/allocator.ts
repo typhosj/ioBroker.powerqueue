@@ -27,6 +27,13 @@ import type {
 const MIN_MARGIN_FRACTION = 0.05;
 
 /**
+ * How much a target has to move before it is worth writing, as a fraction of the maximum power.
+ * The surplus is never still, and a wallbox that renegotiates its current on every watt of noise is
+ * worse off than one that follows the budget a little more coarsely.
+ */
+const WRITE_DEADBAND_FRACTION = 0.05;
+
+/**
  * Runtime state of a consumer that has never run. `lastChange` is 0 on purpose: a consumer without
  * a history must not be blocked by a minimum off time it never earned. After a restart the real
  * `lastChange` comes back from the adapter's own states instead.
@@ -98,6 +105,47 @@ function normalize(value: number, alreadyPositive: boolean): number {
  */
 function fresh(sample: Sample | null, now: number, maxAgeMs: number): number | null {
     return sample && now - sample.ts <= maxAgeMs ? sample.value : null;
+}
+
+/**
+ * How much of the remaining budget a consumer may take.
+ *
+ * A device that can only be switched takes its full power or nothing, because its lowest power is
+ * its nominal power. A modulating device takes anything between its lowest power and its maximum,
+ * quantized to whole steps: the steps are counted from the lowest power, since 6 A per phase is the
+ * floor of a wallbox and every further ampere is one step on top of that floor.
+ *
+ * @param consumer - consumer configuration
+ * @param budgetW - the power that is still unallocated
+ * @returns the power to hand out, `0` when the budget does not even cover the lowest power
+ */
+function grantFor(consumer: ConsumerConfig, budgetW: number): number {
+    if (budgetW < consumer.minPowerW) {
+        return 0;
+    }
+    const capped = Math.min(budgetW, consumer.nominalPowerW);
+    if (consumer.stepW <= 0) {
+        return capped;
+    }
+    return consumer.minPowerW + Math.floor((capped - consumer.minPowerW) / consumer.stepW) * consumer.stepW;
+}
+
+/**
+ * Whether a new target differs enough from the commanded one to be worth writing.
+ *
+ * Switching on or off always is. Everything else has to clear a dead band, so a modulating device
+ * is not re-commanded on every evaluation just because the sun moved behind a cloud for a moment.
+ *
+ * @param consumer - consumer configuration
+ * @param fromW - the power that was last commanded
+ * @param toW - the power the plan proposes
+ * @returns whether the target should be written
+ */
+export function worthWriting(consumer: ConsumerConfig, fromW: number, toW: number): boolean {
+    if (fromW > 0 !== toW > 0) {
+        return true;
+    }
+    return Math.abs(toW - fromW) >= Math.max(consumer.stepW, WRITE_DEADBAND_FRACTION * consumer.nominalPowerW);
 }
 
 /**
@@ -286,21 +334,25 @@ export function allocate(config: Config, snapshot: Snapshot, runtime: Runtime): 
             continue;
         }
 
-        const margin = Math.max(energy.reserveW, MIN_MARGIN_FRACTION * consumer.nominalPowerW);
+        const margin = Math.max(energy.reserveW, MIN_MARGIN_FRACTION * consumer.minPowerW);
         const running = state.appliedPowerW > 0;
+        // Keeping a device running costs what it draws; starting one costs the margin on top.
+        const keepW = grantFor(consumer, remainingW);
+        const startW = grantFor(consumer, remainingW - margin);
         let proposedPowerW = 0;
         let consumerState: ConsumerState;
         let reason: ReasonCode;
 
         if (running) {
-            if (remainingW >= consumer.nominalPowerW) {
-                proposedPowerW = consumer.nominalPowerW;
+            if (keepW > 0) {
+                proposedPowerW = keepW;
                 consumerState = 'running';
                 reason = 'allocated';
             } else if (now - state.lastChange < consumer.minOnMs) {
                 // Held above the budget on purpose: switching the device off again this soon is
-                // worse for it than the small import this causes.
-                proposedPowerW = consumer.nominalPowerW;
+                // worse for it than the small import this causes. A device that can modulate is
+                // held at its lowest power, which is the cheapest way to keep that commitment.
+                proposedPowerW = consumer.minPowerW;
                 consumerState = 'committed';
                 reason = 'min_on_time';
             } else {
@@ -310,10 +362,10 @@ export function allocate(config: Config, snapshot: Snapshot, runtime: Runtime): 
         } else if (now - state.lastChange < consumer.minOffMs) {
             consumerState = 'waiting';
             reason = 'min_off_time';
-        } else if (remainingW >= consumer.nominalPowerW + margin) {
-            // Starting costs the reserve on top of the nominal power; staying on does not. That
+        } else if (startW > 0) {
+            // Starting costs the reserve on top of the lowest power; staying on does not. That
             // asymmetry is the hysteresis, derived from the reserve the user already configured.
-            proposedPowerW = consumer.nominalPowerW;
+            proposedPowerW = startW;
             consumerState = 'running';
             reason = 'allocated';
         } else {

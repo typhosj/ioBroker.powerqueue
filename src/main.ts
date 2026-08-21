@@ -4,10 +4,11 @@
 
 import * as utils from '@iobroker/adapter-core';
 
-import { allocate, applyPlan, emptyRuntime, nextMidnight, pruneSamples } from './lib/allocator';
+import { allocate, applyPlan, emptyRuntime, nextMidnight, pruneSamples, worthWriting } from './lib/allocator';
 import {
     normalizeNative,
     subscribedIds,
+    targetValue,
     toDomainConfig,
     validateNative,
     type NativeConfig,
@@ -390,42 +391,55 @@ class Powerqueue extends utils.Adapter {
      */
     private async applyTargets(plan: Plan): Promise<Plan> {
         const byKey = new Map(this.native.consumers.map(consumer => [consumer.key, consumer]));
+        const domainByKey = new Map(this.domain.consumers.map(consumer => [consumer.key, consumer]));
         const consumers = [];
 
         for (const decision of plan.consumers) {
             const consumer = byKey.get(decision.key);
+            const domain = domainByKey.get(decision.key);
             const previous = this.runtime[decision.key]?.appliedPowerW ?? 0;
             const mayWrite =
-                consumer && this.native.mode === 'control' && consumer.armed && decision.state !== 'override';
+                this.native.mode === 'control' && consumer?.armed === true && decision.state !== 'override';
 
-            const applied =
-                mayWrite &&
-                (decision.proposedPowerW === previous ||
-                    (await this.writeTarget(consumer, decision.proposedPowerW > 0)));
+            // An unchanged target, and a modulating target that would move less than its dead band,
+            // are not written at all — the device keeps the power it was really given.
+            const written =
+                mayWrite && consumer && domain && worthWriting(domain, previous, decision.proposedPowerW)
+                    ? await this.writeTarget(consumer, decision.proposedPowerW)
+                    : false;
 
             // Nothing written means nothing changed: the runtime keeps what PowerQueue really commanded.
-            consumers.push(applied ? decision : { ...decision, proposedPowerW: previous });
+            consumers.push(written ? decision : { ...decision, proposedPowerW: previous });
         }
 
         return { ...plan, consumers };
     }
 
     /**
-     * @param consumer - the consumer to switch
-     * @param on - whether it should draw power
+     * @param consumer - the consumer to command
+     * @param watts - the power it should draw; `0` switches it off
      * @returns whether the target was written
      */
-    private async writeTarget(consumer: NativeConsumer, on: boolean): Promise<boolean> {
+    private async writeTarget(consumer: NativeConsumer, watts: number): Promise<boolean> {
         try {
             const object = await this.getForeignObjectAsync(consumer.targetId);
             if (!object || object.type !== 'state' || !object.common.write) {
                 this.log.warn(`"${consumer.name}" was not switched: ${consumer.targetId} is not a writable state.`);
                 return false;
             }
+            if (consumer.targetUnit !== 'switch' && object.common.type !== 'number') {
+                this.log.warn(`"${consumer.name}" was not set: ${consumer.targetId} cannot take a power value.`);
+                return false;
+            }
+            const target = targetValue(consumer, watts);
             // A switch is usually boolean, but some adapters model it as 0/1.
-            const value = object.common.type === 'number' ? (on ? 1 : 0) : on;
+            const value = typeof target === 'boolean' && object.common.type === 'number' ? (target ? 1 : 0) : target;
             await this.setForeignStateAsync(consumer.targetId, value, false);
-            this.log.info(`"${consumer.name}" switched ${on ? 'on' : 'off'}.`);
+            this.log.info(
+                consumer.targetUnit === 'switch'
+                    ? `"${consumer.name}" switched ${watts > 0 ? 'on' : 'off'}.`
+                    : `"${consumer.name}" set to ${Math.round(watts)} W (${String(value)}).`,
+            );
             return true;
         } catch (error) {
             this.log.warn(`"${consumer.name}" could not be switched: ${(error as Error).message}`);

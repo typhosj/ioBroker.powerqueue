@@ -69,7 +69,7 @@ export interface EnergyConfig {
     minBatterySoc: number | null;
 }
 
-/** One binary consumer. Power stays numeric so modulating loads can be added without a type change. */
+/** One consumer. A device that can only be switched on and off has `minPowerW === nominalPowerW`. */
 export interface ConsumerConfig {
     /** Generated once, never derived from the display name. */
     key: string;
@@ -80,7 +80,15 @@ export interface ConsumerConfig {
     armed: boolean;
     /** Lower number wins. Ties are broken by `key` so the order is deterministic. */
     priority: number;
+    /** Highest power the consumer may be given. */
     nominalPowerW: number;
+    /**
+     * Lowest power the consumer can run at. Equal to `nominalPowerW` for a device that can only be
+     * switched; a wallbox cannot charge below 6 A per phase and a modulating heater has a floor too.
+     */
+    minPowerW: number;
+    /** Granularity of the allocated power. `0` is continuous; a wallbox steps by 1 A per phase. */
+    stepW: number;
     minOnMs: number;
     minOffMs: number;
     /** Applied on invalid input and on unavailable devices. */
