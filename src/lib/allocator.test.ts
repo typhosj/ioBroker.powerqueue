@@ -518,3 +518,35 @@ describe('addPlannedEnergy', () => {
         expect(addPlannedEnergy(6400, planAt(-3000, now), now - 5 * MINUTE)).to.equal(0);
     });
 });
+
+describe('a device PowerQueue does not operate', () => {
+    const running = { consumers: { pump: { available: true, actualPowerW: 1000 } } };
+
+    it('is running because it is measured running, not because PowerQueue said so', () => {
+        // The surplus covers the pump but not the margin a start would cost. A pump that is
+        // already running does not have to pay that margin — and this one is running.
+        const plan = allocate(
+            { ...config([consumer()]), mode: 'observe' },
+            snapshot(0, ['pump'], running),
+            runtimeOf({}),
+        );
+        expect(plan.consumers[0].state).to.equal('running');
+        expect(plan.consumers[0].proposedPowerW).to.equal(1000);
+    });
+
+    it('reads a device that was never released like one it only watches', () => {
+        const plan = allocate(config([consumer({ armed: false })]), snapshot(0, ['pump'], running), runtimeOf({}));
+        expect(plan.consumers[0].state).to.equal('running');
+    });
+
+    it('keeps trusting its own command for a device it does operate', () => {
+        // Switched on a minute ago and still drawing nothing — a car that has not woken up yet.
+        const runtime = runtimeOf({ appliedPowerW: 1000, lastChange: T0 - MINUTE });
+        const plan = allocate(
+            config([consumer()]),
+            snapshot(2000, ['pump'], { consumers: { pump: { available: true, actualPowerW: 0 } } }),
+            runtime,
+        );
+        expect(plan.consumers[0].state).to.equal('committed');
+    });
+});

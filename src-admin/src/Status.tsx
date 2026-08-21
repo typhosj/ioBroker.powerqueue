@@ -137,14 +137,16 @@ export function Status(props: StatusProps): React.JSX.Element {
                 <Typography variant="body1">
                     {native.mode === 'control'
                         ? I18n.t('Handed to your devices today: %s.', energy(plannedTodayWh))
-                        : I18n.t('PowerQueue would have handed your devices %s today.', energy(plannedTodayWh))}
+                        : I18n.t('The plans of today add up to %s in your devices.', energy(plannedTodayWh))}
                 </Typography>
                 {native.mode === 'control' ? null : (
                     <Typography
                         color="text.secondary"
                         variant="body2"
                     >
-                        {I18n.t('That much surplus power was there for them while PowerQueue was only watching.')}
+                        {I18n.t(
+                            'That is what PowerQueue would have carried, including what a device is already drawing by itself.',
+                        )}
                     </Typography>
                 )}
             </Box>

@@ -66,7 +66,9 @@ to later versions, and so is automatic phase switching between one and three pha
 The consumer states are also the restart-safe runtime state: minimum on/off times and the daily
 runtime survive a restart because they are read back from these states.
 
-In `observe` no foreign state is ever written. In `control` PowerQueue writes only the switch of a
+In `observe` no foreign state is ever written. A device PowerQueue does not operate — because it
+is only watching, or because that device was never released — is read from its measurement instead
+of from a command that was never sent: a pump running on its own schedule counts as running. In `control` PowerQueue writes only the switch of a
 consumer that is explicitly armed, and only when its target changes. A command from anyone else
 hands the device over until midnight.
 
@@ -124,6 +126,9 @@ npm test
 - (typhosj) "Right now" no longer reads like a report about the house while PowerQueue is only
   watching. It says so, calls the column a proposal, and shows next to it what each device really
   draws — published as `consumers.<key>.measuredPowerW`.
+- (typhosj) A plan takes the devices PowerQueue does not operate as they really are. Before, every
+  device counted as off while PowerQueue was only watching, so the surplus a running pump already
+  used was offered to another device on top of it.
 
 ### 0.1.0 (2026-08-13)
 

@@ -169,6 +169,21 @@ function currentPowerW(runtime: ConsumerRuntime, actualPowerW: number | null): n
 }
 
 /**
+ * Whether PowerQueue is the one operating this consumer.
+ *
+ * Only then does its own commanded value describe the device. While it is merely watching, or
+ * while a device has not been released, the device is operated by somebody else — its schedule,
+ * its own thermostat, a hand on the switch — and only the measurement says what it does.
+ *
+ * @param config - normalized configuration
+ * @param consumer - consumer configuration
+ * @returns whether PowerQueue commands this consumer
+ */
+function isControlled(config: Config, consumer: ConsumerConfig): boolean {
+    return config.mode === 'control' && consumer.armed;
+}
+
+/**
  * @param runtime - runtime state of the consumer
  * @param now - evaluation timestamp
  * @returns whether someone else currently owns the target
@@ -335,7 +350,12 @@ export function allocate(config: Config, snapshot: Snapshot, runtime: Runtime): 
         }
 
         const margin = Math.max(energy.reserveW, MIN_MARGIN_FRACTION * consumer.minPowerW);
-        const running = state.appliedPowerW > 0;
+        // A device PowerQueue does not operate is described by its measurement, not by a command
+        // that was never sent: a pump running on its own schedule is running, and a plan that
+        // pretends otherwise hands its power to somebody else twice.
+        const running = isControlled(config, consumer)
+            ? state.appliedPowerW > 0
+            : currentPowerW(state, input.actualPowerW) > 0;
         // Keeping a device running costs what it draws; starting one costs the margin on top.
         const keepW = grantFor(consumer, remainingW);
         const startW = grantFor(consumer, remainingW - margin);
