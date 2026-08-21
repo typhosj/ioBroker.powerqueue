@@ -4,7 +4,16 @@
 
 import * as utils from '@iobroker/adapter-core';
 
-import { allocate, applyPlan, emptyRuntime, nextMidnight, pruneSamples, worthWriting } from './lib/allocator';
+import {
+    addPlannedEnergy,
+    allocate,
+    applyPlan,
+    emptyRuntime,
+    nextMidnight,
+    pruneSamples,
+    sameLocalDay,
+    worthWriting,
+} from './lib/allocator';
 import {
     normalizeNative,
     subscribedIds,
@@ -51,6 +60,20 @@ const BUDGET_STATES: (StateDefinition & { id: keyof Budget })[] = [
     { id: 'remainingW', name: 'Unallocated power', type: 'number', role: 'value.power', unit: 'W' },
 ];
 
+/**
+ * What the day added up to. It is the honest answer to "is this worth switching on": in `observe`
+ * it is the energy the devices would have used, in `control` the energy they did use.
+ */
+const STATS_STATES: StateDefinition[] = [
+    {
+        id: 'plannedTodayWh',
+        name: 'Energy handed out today',
+        type: 'number',
+        role: 'value.power.consumption',
+        unit: 'Wh',
+    },
+];
+
 const CONSUMER_STATES: StateDefinition[] = [
     { id: 'state', name: 'State', type: 'string', role: 'text' },
     { id: 'stateText', name: 'State in words', type: 'string', role: 'text' },
@@ -93,6 +116,8 @@ class Powerqueue extends utils.Adapter {
     private readonly availability = new Map<string, boolean>();
 
     private runtime: Runtime = {};
+    /** Energy the plans of today add up to, restored from the adapter's own state after a restart. */
+    private plannedTodayWh = 0;
     private lastEvaluation: number | null = null;
     private evaluating = false;
     private timer?: ioBroker.Interval;
@@ -150,6 +175,7 @@ class Powerqueue extends utils.Adapter {
         for (const [id, name] of [
             ['plan', 'Current plan'],
             ['budget', 'Power budget'],
+            ['stats', 'What the day added up to'],
             ['consumers', 'Devices'],
         ]) {
             await this.extendObjectAsync(id, { type: 'channel', common: { name }, native: {} });
@@ -160,6 +186,9 @@ class Powerqueue extends utils.Adapter {
         }
         for (const definition of BUDGET_STATES) {
             await this.defineState(`budget.${definition.id}`, definition);
+        }
+        for (const definition of STATS_STATES) {
+            await this.defineState(`stats.${definition.id}`, definition);
         }
 
         const keys = new Set<string>();
@@ -210,6 +239,14 @@ class Powerqueue extends utils.Adapter {
      * device is running or waiting out a minimum time.
      */
     private async restoreRuntime(): Promise<void> {
+        // The counter belongs to the day of the last evaluation. After a night with the adapter
+        // stopped it starts over, instead of pretending yesterday's energy was handed out today.
+        const updated = await this.readNumber('plan.updated');
+        this.plannedTodayWh =
+            updated !== null && sameLocalDay(updated, Date.now())
+                ? ((await this.readNumber('stats.plannedTodayWh')) ?? 0)
+                : 0;
+
         for (const consumer of this.native.consumers) {
             const base = `consumers.${consumer.key}`;
             const overrideUntil = await this.readNumber(`${base}.overrideUntil`);
@@ -350,6 +387,8 @@ class Powerqueue extends utils.Adapter {
             const plan = allocate(this.domain, this.snapshot(now), this.runtime);
             const applied = await this.applyTargets(plan);
             this.runtime = applyPlan(this.runtime, applied, this.lastEvaluation);
+            // The decided plan, not the applied one: in `observe` that difference is the point.
+            this.plannedTodayWh = addPlannedEnergy(this.plannedTodayWh, plan, this.lastEvaluation);
             this.lastEvaluation = now;
             await this.publishPlan(plan);
         } catch (error) {
@@ -460,6 +499,7 @@ class Powerqueue extends utils.Adapter {
         for (const definition of BUDGET_STATES) {
             await this.publish(`budget.${definition.id}`, plan.budget[definition.id]);
         }
+        await this.publish('stats.plannedTodayWh', Math.round(this.plannedTodayWh));
 
         for (const decision of plan.consumers) {
             const base = `consumers.${decision.key}`;

@@ -28,6 +28,14 @@ export function watt(watts: number): string {
 }
 
 /**
+ * @param wattHours - an energy
+ * @returns the energy in watt hours, or in kilowatt hours once that reads better
+ */
+export function energy(wattHours: number): string {
+    return wattHours >= 1000 ? `${(wattHours / 1000).toFixed(1)} kWh` : `${Math.round(wattHours)} Wh`;
+}
+
+/**
  * @param seconds - a duration
  * @returns the duration in hours and minutes
  */

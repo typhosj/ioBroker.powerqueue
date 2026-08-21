@@ -14,7 +14,7 @@ import React from 'react';
 import type { NativeConfig } from '../../src/lib/config';
 import { CONSUMER_REASON_TEXT, CONSUMER_STATE_TEXT, PLAN_REASON_TEXT } from '../../src/lib/reasons';
 import type { ConsumerState, ReasonCode } from '../../src/lib/types';
-import { duration, watt } from './Simulation';
+import { duration, energy, watt } from './Simulation';
 
 /** What the table needs per device, and what the header needs on top. */
 const CONSUMER_FIELDS = ['state', 'reason', 'proposedPowerW', 'runtimeTodayS'] as const;
@@ -81,6 +81,7 @@ export function Status(props: StatusProps): React.JSX.Element {
         `${namespace}.plan.valid`,
         `${namespace}.plan.reason`,
         ...BUDGET_FIELDS.map(field => `${namespace}.budget.${field}`),
+        `${namespace}.stats.plannedTodayWh`,
         ...native.consumers.flatMap(consumer =>
             CONSUMER_FIELDS.map(field => `${namespace}.consumers.${consumer.key}.${field}`),
         ),
@@ -101,6 +102,7 @@ export function Status(props: StatusProps): React.JSX.Element {
     const budget = Object.fromEntries(
         BUDGET_FIELDS.map(field => [field, number(values[`${namespace}.budget.${field}`])]),
     ) as Record<(typeof BUDGET_FIELDS)[number], number>;
+    const plannedTodayWh = number(values[`${namespace}.stats.plannedTodayWh`]);
 
     return (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, p: 2, overflow: 'auto' }}>
@@ -129,6 +131,22 @@ export function Status(props: StatusProps): React.JSX.Element {
                         watt(budget.reserveW),
                     )}
                 </Typography>
+            </Box>
+
+            <Box>
+                <Typography variant="body1">
+                    {native.mode === 'control'
+                        ? I18n.t('Handed to your devices today: %s.', energy(plannedTodayWh))
+                        : I18n.t('PowerQueue would have handed your devices %s today.', energy(plannedTodayWh))}
+                </Typography>
+                {native.mode === 'control' ? null : (
+                    <Typography
+                        color="text.secondary"
+                        variant="body2"
+                    >
+                        {I18n.t('That much surplus power was there for them while PowerQueue was only watching.')}
+                    </Typography>
+                )}
             </Box>
 
             {native.consumers.length === 0 ? (

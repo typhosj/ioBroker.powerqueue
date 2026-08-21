@@ -4,7 +4,16 @@
  */
 
 import { expect } from 'chai';
-import { allocate, applyPlan, emptyRuntime, nextMidnight, pruneSamples, smooth, worthWriting } from './allocator';
+import {
+    addPlannedEnergy,
+    allocate,
+    applyPlan,
+    emptyRuntime,
+    nextMidnight,
+    pruneSamples,
+    smooth,
+    worthWriting,
+} from './allocator';
 import type { Config, ConsumerConfig, ConsumerRuntime, Plan, Runtime, Snapshot } from './types';
 
 const T0 = new Date('2026-08-09T12:00:00Z').getTime();
@@ -479,5 +488,33 @@ describe('worthWriting', () => {
         const heater = consumer({ nominalPowerW: 2000, minPowerW: 500, stepW: 0 });
         expect(worthWriting(heater, 1000, 1050)).to.equal(false);
         expect(worthWriting(heater, 1000, 1100)).to.equal(true);
+    });
+});
+
+describe('addPlannedEnergy', () => {
+    const cfg = config([consumer()]);
+
+    /**
+     * @param gridW - the grid reading to plan from
+     * @param now - the evaluation timestamp
+     * @returns a plan whose budget the counter can be fed with
+     */
+    function planAt(gridW: number, now: number): Plan {
+        const runtime = runtimeOf({ appliedPowerW: 1000, lastChange: now - 30 * MINUTE });
+        return allocate(cfg, snapshot(gridW, ['pump'], { now, grid: [{ value: gridW, ts: now }] }), runtime);
+    }
+
+    it('counts nothing before there is a previous evaluation to measure against', () => {
+        expect(addPlannedEnergy(500, planAt(-3000, T0), null)).to.equal(500);
+    });
+
+    it('counts the allocated power over the time since the last evaluation', () => {
+        // 1000 W for five minutes is a twelfth of an hour.
+        expect(addPlannedEnergy(0, planAt(-3000, T0), T0 - 5 * MINUTE)).to.be.closeTo(83.3, 0.1);
+    });
+
+    it('starts over on a new local day', () => {
+        const now = new Date('2026-08-10T00:02:00').getTime();
+        expect(addPlannedEnergy(6400, planAt(-3000, now), now - 5 * MINUTE)).to.equal(0);
     });
 });

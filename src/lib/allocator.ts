@@ -400,6 +400,37 @@ function localDay(ts: number): string {
 }
 
 /**
+ * @param a - one timestamp
+ * @param b - another timestamp
+ * @returns whether both fall on the same local calendar day
+ */
+export function sameLocalDay(a: number, b: number): boolean {
+    return localDay(a) === localDay(b);
+}
+
+/**
+ * Add what a plan hands out to the energy of the day.
+ *
+ * This is the answer to "what would PowerQueue have done for me": in `observe` nothing is written,
+ * so the allocated power is exactly the power the devices did not get — and the allocator never
+ * allocates more than the surplus covers, so the number is what the house really had to spare.
+ *
+ * @param todayWh - the energy counted so far today
+ * @param plan - the plan that was just decided
+ * @param lastEvaluation - timestamp of the previous evaluation, `null` right after a start
+ * @returns the new counter; it starts over on a new local day
+ */
+export function addPlannedEnergy(todayWh: number, plan: Plan, lastEvaluation: number | null): number {
+    if (lastEvaluation === null) {
+        return todayWh;
+    }
+    if (!sameLocalDay(lastEvaluation, plan.now)) {
+        return 0;
+    }
+    return todayWh + (plan.budget.allocatedW * Math.max(plan.now - lastEvaluation, 0)) / 3_600_000;
+}
+
+/**
  * Default expiry of a manual override: someone who switches a device by hand owns it for the rest
  * of the day, not forever.
  *

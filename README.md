@@ -58,6 +58,8 @@ to later versions, and so is automatic phase switching between one and three pha
 
 - `plan.valid`, `plan.reason`, `plan.reasonText`, `plan.updated` — what PowerQueue decided and why
 - `budget.*` — the waterfall from the grid reading to the unallocated watts
+- `stats.plannedTodayWh` — the energy today's plans add up to: what the devices got, or in
+  `observe` what they would have got
 - `consumers.<key>.*` — state, reason, proposed and applied power, runtime today, last change and
   the expiry of a manual override
 
@@ -109,6 +111,8 @@ npm test
   maximum, so a wallbox is not re-commanded on every cloud.
 - (typhosj) The mains voltage used to turn watts into amperes can be corrected; 230 V is only the
   nominal value.
+- (typhosj) `stats.plannedTodayWh` counts what the plans of the day add up to, so watching alone
+  already answers whether PowerQueue would be worth switching on.
 
 ### 0.1.0 (2026-08-13)
 
