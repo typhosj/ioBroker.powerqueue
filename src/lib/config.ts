@@ -288,6 +288,35 @@ function lowestPowerW(consumer: NativeConsumer): number {
 }
 
 /**
+ * What the unit of a state says about the value behind it.
+ *
+ * Only units that mean exactly one thing are answered, so the question is asked only where it
+ * really is open. `kW` is deliberately not among them: reading it as watts is wrong by a factor of
+ * a thousand, and a silent wrong guess is worse than a question.
+ *
+ * @param unit - `common.unit` of the selected state
+ * @returns what the state is measured in, or `null` when the unit does not say
+ */
+export function unitOf(unit: string | undefined): TargetUnit | null {
+    switch ((unit ?? '').trim().toLowerCase()) {
+        case 'a':
+        case 'amp':
+        case 'amps':
+        case 'ampere':
+            return 'ampere';
+        case 'w':
+        case 'watt':
+        case 'watts':
+            return 'watt';
+        case '%':
+        case 'percent':
+            return 'percent';
+        default:
+            return null;
+    }
+}
+
+/**
  * Translate what a device reports into watts.
  *
  * @param consumer - the stored consumer

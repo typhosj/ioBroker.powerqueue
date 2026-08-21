@@ -28,6 +28,7 @@ import React from 'react';
 import {
     DEFAULT_CONSUMER,
     newConsumerKey,
+    unitOf,
     type NativeConfig,
     type NativeConsumer,
     type TargetUnit,
@@ -167,9 +168,8 @@ export function Devices(props: DevicesProps): React.JSX.Element {
      * @param consumer - the consumer to change
      * @param unit - what the device is told
      */
-    function changeUnit(consumer: NativeConsumer, unit: TargetUnit): void {
-        const crosses = (unit === 'switch') !== (consumer.targetUnit === 'switch');
-        const patch: Partial<NativeConsumer> = { targetUnit: unit, ...(crosses ? { targetId: '' } : {}) };
+    function unitPatch(consumer: NativeConsumer, unit: TargetUnit): Partial<NativeConsumer> {
+        const patch: Partial<NativeConsumer> = { targetUnit: unit };
         if (unit === 'ampere') {
             const factor = wattsPerAmp(consumer);
             // A wallbox follows whole amperes, so the step is not a question for the user.
@@ -181,7 +181,55 @@ export function Devices(props: DevicesProps): React.JSX.Element {
                 patch.nominalPowerW = 16 * factor;
             }
         }
-        update(consumer.key, patch);
+        return patch;
+    }
+
+    /**
+     * @param consumer - the consumer to change
+     * @param unit - what the device is told
+     */
+    function changeUnit(consumer: NativeConsumer, unit: TargetUnit): void {
+        const crosses = (unit === 'switch') !== (consumer.targetUnit === 'switch');
+        update(consumer.key, { ...unitPatch(consumer, unit), ...(crosses ? { targetId: '' } : {}) });
+    }
+
+    /**
+     * Take over the state that is written, and let its unit answer the question about the unit.
+     *
+     * A state that says it is measured in amperes settles what the device is told better than the
+     * user can. A device the user declared a plain switch stays one: a writable number with a unit
+     * is not proof that the device can be modulated at all.
+     *
+     * @param consumer - the consumer the state belongs to
+     * @param id - the selected object ID
+     * @param name - the name the dialog offers for it
+     */
+    function selectTarget(consumer: NativeConsumer, id: string, name: string | null): void {
+        void props.socket.getObject(id).then(object => {
+            const detected = unitOf(object?.common?.unit);
+            const follows = detected && detected !== consumer.targetUnit && consumer.targetUnit !== 'switch';
+            update(consumer.key, {
+                targetId: id,
+                name: consumer.name || name || id,
+                ...(follows ? unitPatch(consumer, detected) : {}),
+            });
+        });
+    }
+
+    /**
+     * Take over the state that is measured, and let its unit say what it measures.
+     *
+     * @param consumer - the consumer the state belongs to
+     * @param id - the selected object ID
+     */
+    function selectFeedback(consumer: NativeConsumer, id: string): void {
+        void props.socket.getObject(id).then(object => {
+            const detected = unitOf(object?.common?.unit);
+            update(consumer.key, {
+                feedbackId: id,
+                ...(detected === 'ampere' || detected === 'watt' ? { feedbackUnit: detected } : {}),
+            });
+        });
     }
 
     /**
@@ -518,9 +566,7 @@ export function Devices(props: DevicesProps): React.JSX.Element {
                                           ? I18n.t('Select the state that sets the charging current')
                                           : I18n.t('Select the state that sets the power')
                                 }
-                                onSelect={(id, name) =>
-                                    update(consumer.key, { targetId: id, name: consumer.name || name || id })
-                                }
+                                onSelect={(id, name) => selectTarget(consumer, id, name)}
                                 socket={props.socket}
                                 theme={props.theme}
                                 value={consumer.targetId}
@@ -529,7 +575,7 @@ export function Devices(props: DevicesProps): React.JSX.Element {
                             <SelectStateButton
                                 filterFunc={isPowerState}
                                 label={I18n.t('Select what the device reports (optional)')}
-                                onSelect={id => update(consumer.key, { feedbackId: id })}
+                                onSelect={id => selectFeedback(consumer, id)}
                                 socket={props.socket}
                                 theme={props.theme}
                                 value={consumer.feedbackId}

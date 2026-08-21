@@ -119,6 +119,8 @@ npm test
   the unit that kind is spoken in: a wallbox is configured in amperes, not in watts.
 - (typhosj) A device that reports only its charging current can be used as the measured value; the
   phases and the voltage turn it into watts.
+- (typhosj) A selected state answers the question about its unit itself whenever its unit says so:
+  `A` picks amperes, `W` picks watts. Units that would have to be scaled, like `kW`, keep asking.
 
 ### 0.1.0 (2026-08-13)
 

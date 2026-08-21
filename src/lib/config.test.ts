@@ -7,6 +7,7 @@ import {
     subscribedIds,
     feedbackWatts,
     targetValue,
+    unitOf,
     toDomainConfig,
     validateNative,
     type NativeConfig,
@@ -264,5 +265,19 @@ describe('feedbackWatts', () => {
     it('needs phases and voltage before a reported current means anything', () => {
         const reporter = wallbox({ targetUnit: 'switch', feedbackUnit: 'ampere', voltageV: 0 });
         expect(fields(usable({ consumers: [reporter] }))).to.deep.equal(['consumers']);
+    });
+});
+
+describe('unitOf', () => {
+    it('answers the units that mean exactly one thing', () => {
+        expect(unitOf('A')).to.equal('ampere');
+        expect(unitOf(' w ')).to.equal('watt');
+        expect(unitOf('%')).to.equal('percent');
+    });
+
+    it('says nothing where a wrong guess would be off by a factor', () => {
+        expect(unitOf('kW')).to.equal(null);
+        expect(unitOf('Wh')).to.equal(null);
+        expect(unitOf(undefined)).to.equal(null);
     });
 });
