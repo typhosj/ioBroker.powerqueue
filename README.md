@@ -60,8 +60,8 @@ to later versions, and so is automatic phase switching between one and three pha
 - `budget.*` — the waterfall from the grid reading to the unallocated watts
 - `stats.plannedTodayWh` — the energy today's plans add up to: what the devices got, or in
   `observe` what they would have got
-- `consumers.<key>.*` — state, reason, proposed and applied power, runtime today, last change and
-  the expiry of a manual override
+- `consumers.<key>.*` — state, reason, proposed, applied and measured power, runtime today, last
+  change and the expiry of a manual override
 
 The consumer states are also the restart-safe runtime state: minimum on/off times and the daily
 runtime survive a restart because they are read back from these states.
@@ -121,6 +121,9 @@ npm test
   phases and the voltage turn it into watts.
 - (typhosj) A selected state answers the question about its unit itself whenever its unit says so:
   `A` picks amperes, `W` picks watts. Units that would have to be scaled, like `kW`, keep asking.
+- (typhosj) "Right now" no longer reads like a report about the house while PowerQueue is only
+  watching. It says so, calls the column a proposal, and shows next to it what each device really
+  draws — published as `consumers.<key>.measuredPowerW`.
 
 ### 0.1.0 (2026-08-13)
 

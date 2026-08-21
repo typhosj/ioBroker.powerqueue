@@ -81,6 +81,7 @@ const CONSUMER_STATES: StateDefinition[] = [
     { id: 'reason', name: 'Reason code', type: 'string', role: 'text' },
     { id: 'reasonText', name: 'Reason', type: 'string', role: 'text' },
     { id: 'proposedPowerW', name: 'Proposed power', type: 'number', role: 'value.power', unit: 'W' },
+    { id: 'measuredPowerW', name: 'Measured power', type: 'number', role: 'value.power', unit: 'W' },
     { id: 'appliedPowerW', name: 'Applied power', type: 'number', role: 'value.power', unit: 'W' },
     { id: 'runtimeTodayS', name: 'Runtime today', type: 'number', role: 'value.interval', unit: 's' },
     { id: 'lastChange', name: 'Last change', type: 'number', role: 'value.time' },
@@ -385,13 +386,14 @@ class Powerqueue extends utils.Adapter {
             const now = Date.now();
             this.grid = pruneSamples(this.grid, now, this.domain.energy.smoothingWindowMs);
 
-            const plan = allocate(this.domain, this.snapshot(now), this.runtime);
+            const snapshot = this.snapshot(now);
+            const plan = allocate(this.domain, snapshot, this.runtime);
             const applied = await this.applyTargets(plan);
             this.runtime = applyPlan(this.runtime, applied, this.lastEvaluation);
             // The decided plan, not the applied one: in `observe` that difference is the point.
             this.plannedTodayWh = addPlannedEnergy(this.plannedTodayWh, plan, this.lastEvaluation);
             this.lastEvaluation = now;
-            await this.publishPlan(plan);
+            await this.publishPlan(plan, snapshot);
         } catch (error) {
             this.log.error(`Evaluation failed: ${(error as Error).message}`);
         } finally {
@@ -491,8 +493,9 @@ class Powerqueue extends utils.Adapter {
 
     /**
      * @param plan - the plan as decided, including the proposals that were not written
+     * @param snapshot - the inputs the plan was decided from, for what the devices really draw
      */
-    private async publishPlan(plan: Plan): Promise<void> {
+    private async publishPlan(plan: Plan, snapshot: Snapshot): Promise<void> {
         await this.publish('info.connection', plan.valid);
         await this.publish('plan.valid', plan.valid);
         await this.publish('plan.reason', plan.reason);
@@ -512,6 +515,9 @@ class Powerqueue extends utils.Adapter {
             await this.publish(`${base}.reason`, decision.reason);
             await this.publish(`${base}.reasonText`, CONSUMER_REASON_TEXT[decision.reason]);
             await this.publish(`${base}.proposedPowerW`, decision.proposedPowerW);
+            // What the device really draws, which is not what PowerQueue proposes and, while it is
+            // only watching, usually not what PowerQueue commanded either.
+            await this.publish(`${base}.measuredPowerW`, snapshot.consumers[decision.key]?.actualPowerW ?? null);
             await this.publish(`${base}.appliedPowerW`, runtime.appliedPowerW);
             await this.publish(`${base}.runtimeTodayS`, Math.round(runtime.runtimeTodayS));
             await this.publish(`${base}.lastChange`, runtime.lastChange);

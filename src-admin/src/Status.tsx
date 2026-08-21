@@ -17,7 +17,7 @@ import type { ConsumerState, ReasonCode } from '../../src/lib/types';
 import { duration, energy, watt } from './Simulation';
 
 /** What the table needs per device, and what the header needs on top. */
-const CONSUMER_FIELDS = ['state', 'reason', 'proposedPowerW', 'runtimeTodayS'] as const;
+const CONSUMER_FIELDS = ['state', 'reason', 'proposedPowerW', 'measuredPowerW', 'runtimeTodayS'] as const;
 const BUDGET_FIELDS = ['surplusW', 'availableW', 'allocatedW', 'remainingW', 'reserveW'] as const;
 
 type Values = Record<string, ioBroker.StateValue>;
@@ -149,6 +149,14 @@ export function Status(props: StatusProps): React.JSX.Element {
                 )}
             </Box>
 
+            {native.mode === 'control' ? null : (
+                <InfoBox type="info">
+                    {I18n.t(
+                        'PowerQueue is only watching, so nothing here was switched: the state and the proposal say what PowerQueue would do. What your devices are really doing is in the measured column.',
+                    )}
+                </InfoBox>
+            )}
+
             {native.consumers.length === 0 ? (
                 <Typography variant="body2">{I18n.t('No device is configured yet.')}</Typography>
             ) : (
@@ -157,7 +165,10 @@ export function Status(props: StatusProps): React.JSX.Element {
                         <TableRow>
                             <TableCell>{I18n.t('Device')}</TableCell>
                             <TableCell>{I18n.t('Status')}</TableCell>
-                            <TableCell align="right">{I18n.t('Power')}</TableCell>
+                            <TableCell align="right">
+                                {native.mode === 'control' ? I18n.t('Power') : I18n.t('Proposal')}
+                            </TableCell>
+                            <TableCell align="right">{I18n.t('Measured')}</TableCell>
                             <TableCell align="right">{I18n.t('Today')}</TableCell>
                             <TableCell>{I18n.t('Why')}</TableCell>
                         </TableRow>
@@ -175,6 +186,13 @@ export function Status(props: StatusProps): React.JSX.Element {
                                         <TableCell>{state ? I18n.t(CONSUMER_STATE_TEXT[state]) : '—'}</TableCell>
                                         <TableCell align="right">
                                             {watt(number(values[`${base}.proposedPowerW`]))}
+                                        </TableCell>
+                                        <TableCell align="right">
+                                            {/* A device without a measured value says nothing about
+                                                itself, and a dash is the honest answer for it. */}
+                                            {typeof values[`${base}.measuredPowerW`] === 'number'
+                                                ? watt(values[`${base}.measuredPowerW`] as number)
+                                                : '—'}
                                         </TableCell>
                                         <TableCell align="right">
                                             {duration(number(values[`${base}.runtimeTodayS`]))}
