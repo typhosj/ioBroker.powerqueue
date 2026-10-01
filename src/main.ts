@@ -356,7 +356,7 @@ class Powerqueue extends utils.Adapter {
     private noteExternalWrite(consumer: NativeConsumer, state: ioBroker.State): void {
         // Only commands count. An acknowledged value is the device reporting back, including the
         // acknowledgement of PowerQueue's own write.
-        // ponytail: a switch flipped physically on the device only produces an ack and is therefore
+        // Known limit: a switch flipped physically on the device only produces an ack and is therefore
         // not detected; compare acknowledged values against the applied target if that matters.
         if (state.ack || state.from === `system.adapter.${this.namespace}`) {
             return;
