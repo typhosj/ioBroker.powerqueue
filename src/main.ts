@@ -25,6 +25,7 @@ import {
     type NativeConsumer,
 } from './lib/config';
 import { CONSUMER_REASON_TEXT, CONSUMER_STATE_TEXT, PLAN_REASON_TEXT } from './lib/reasons';
+import { roleToMigrate } from './lib/roles';
 import type { Budget, Config, Plan, Runtime, Sample, Snapshot } from './lib/types';
 
 /**
@@ -70,7 +71,7 @@ const STATS_STATES: StateDefinition[] = [
         id: 'plannedTodayWh',
         name: 'Energy handed out today',
         type: 'number',
-        role: 'value.power.consumption',
+        role: 'value.energy.consumed',
         unit: 'Wh',
     },
 ];
@@ -234,6 +235,10 @@ class Powerqueue extends utils.Adapter {
             },
             native: {},
         });
+        const role = roleToMigrate(await this.getObjectAsync(id), definition.role);
+        if (role) {
+            await this.extendObjectAsync(id, { common: { role } });
+        }
     }
 
     /**

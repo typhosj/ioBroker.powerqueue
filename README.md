@@ -105,6 +105,9 @@ npm test
 <!-- Add changes for the next release here; the release script turns this into a version entry. -->
 ### **WORK IN PROGRESS**
 
+- (typhosj) The energy handed out today (`stats.plannedTodayWh`) carries the role
+  `value.energy.consumed` instead of `value.power.consumption`, which the official role list has
+  struck. Existing states are updated on the next start; a role picked by hand is kept.
 - (typhosj) Devices that can be set to a power instead of only being switched: a wallbox takes a
   charging current in amperes per phase, a heating element a percentage, some adapters watts.
   PowerQueue keeps such a device between its lowest and its highest power, in the steps the device
